@@ -74,10 +74,16 @@ Key files:
 
 ## Web Creator (Module 2) — full intake + playbook
 
-The original WebCreator skill is stored verbatim at `apps/server/playbook/webcreator.md`
-and loaded by `apps/server/src/agent/webCreatorPlaybook.ts`. On a Module 2 run, it's
-written to `<workspacesDir>/<projectId>.webcreator-playbook.md` (outside the client repo)
-and the seeded instructions tell Claude Code to read and follow it exactly (no re-interview).
+The WebCreator skill is stored at `apps/server/playbook/webcreator.md` and loaded by
+`apps/server/src/agent/webCreatorPlaybook.ts`. It has been **converted from an interview
+script into a build-only playbook**: the client interview (Step 1 / Rounds 1–6, "ask the
+client" prose, the client-approval steps) was stripped and replaced with declarative
+"Inputs — …" sections (data dictionary). All build content — copywriting voice, the
+4 CRITICAL rules, fixed 10-section layout, the full Section List, SEO/schema, modal,
+image generation, bilingual, output — is preserved verbatim. On a Module 2 run it's
+written to `<workspacesDir>/<projectId>.webcreator-playbook.md` (outside the client repo);
+the seeded instructions feed it the CLIENT BRIEF (the UI answers) and tell Claude Code to
+build from it without ever re-interviewing.
 
 - The form (`apps/web/src/components/WebCreatorForm.tsx`) collects ALL skill interview
   rounds: business identity, services, branding (2 colors, fonts, logo, favicons),

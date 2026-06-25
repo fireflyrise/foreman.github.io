@@ -1,9 +1,15 @@
 ---
 name: webcreator
-description: "Build complete, production-ready multi-page static websites for local businesses and service companies through a guided conversational interview. Use this skill whenever the user asks to create a website, landing page, or web presence for a business — especially home services, contractors, agencies, or any brick-and-mortar business. Produces a homepage, individual service pages, Privacy Policy, Terms & Conditions, and optional Spanish versions — all self-contained HTML/CSS/JS files deployable to any static host. Lead capture via multi-step modal popup submitted to Pabbly Connect webhooks. Appointment booking embedded via third-party widgets. Always use this skill when the request involves: building a business website, creating a multi-page site for a service company, or setting up a web presence for a local business."
+description: "Build playbook (methodology only) for producing complete, production-ready multi-page static websites for local businesses and service companies. The client intake is performed by Foreman's Web Creator UI, NOT by this document — all answers arrive as a structured CLIENT BRIEF. This playbook defines the build: copywriting voice, fixed conversion-focused layout, sections, formatting, SEO/schema, lead-capture modal, image generation, bilingual delivery, and output. Produces a homepage, individual service pages, Privacy Policy, Terms & Conditions, and optional Spanish versions — all self-contained HTML/CSS/JS deployable to any static host. Lead capture via multi-step modal popup submitted to Pabbly Connect webhooks; appointment booking embedded via third-party widgets."
 ---
 
-# WebCreator Skill
+# WebCreator Build Playbook
+
+> **This is a build playbook, not an interview script.** The client interview has already
+> been completed through Foreman's Web Creator UI. You receive all answers as a structured
+> **CLIENT BRIEF** alongside these instructions. Your job is to BUILD the site by following
+> this methodology and filling in the brief's values — never to ask the client questions.
+> Where an input is missing, use the documented default or a clearly-marked placeholder.
 
 Produces complete, multi-page static websites for local businesses — homepage, individual service pages, Privacy Policy, Terms & Conditions, and Spanish versions when bilingual. All output is organized across `css/`, `js/`, `images/`, and HTML files deployable to any static host (Netlify, Vercel, Cloudflare Pages, GitHub Pages, Coolify, etc.).
 
@@ -80,33 +86,17 @@ Every page has one job: get the reader to contact the business. Before writing a
 
 ---
 
-## Step 1: Guided Client Interview
+## Step 1: Inputs (already collected — DO NOT interview)
 
-**Claude drives the entire intake process as a conversation.** Never dump a list of fields for the client to fill out. Ask questions in logical groups, wait for answers, then move to the next group. This is a friendly, professional onboarding experience — not a form.
+**The client interview has already been completed through a separate intake UI. You will NOT ask the client any questions.** All answers are handed to you as a structured CLIENT BRIEF alongside these instructions. Read the brief, map each answer to the variables named below, and build the site. If any input is missing or empty, fall back to the documented default or a clearly-marked placeholder — never stop to ask.
 
-When this skill is triggered, open with:
-
-> *"Let's build your website! I'll ask you a few quick questions to get everything I need. It'll only take a few minutes and I'll guide you through each step. Ready? Let's start."*
-
-Then proceed through the rounds below **in order**. Do not skip rounds or combine them unless instructed.
+The sections below define every input variable, its default/fallback, and the build rules that depend on it. Treat them as a data dictionary, not a conversation script.
 
 ---
 
-### Round 1 — Business Identity
+### Inputs — Business Identity
 
-Ask these together in one message:
-
-> *"First, let's get the basics about your business:*
-> 1. *What's the name of your business?*
-> 2. *What industry or type of business is it? (e.g. Plumbing, HVAC, Landscaping, Digital Marketing, Flower Delivery, etc.)*
-> 3. *What city and state are you located in? (e.g. Phoenix, AZ)*
-> 4. *What's your full business address? (used for Google Maps and local SEO)*
-> 5. *What's the best phone number to display on the site?*
-> 6. *What's the best email address to display?*
-> 7. *Do you have a Google Maps embed code for your business location? If yes, paste it here. If not, I'll leave a clearly marked placeholder you can fill in later.*
-> 8. *What is your website domain? (e.g. sunriseplumbing.com — without https://). This is only needed for 4 specific tags: og:image, og:url, canonical, and hreflang. All internal links use absolute paths like `/terms-and-conditions/` and don't need the domain. If you don't have a domain yet, just say "unknown" and I'll add placeholder comments in those 4 spots.*"
-
-Store answers as: `BUSINESS_NAME`, `INDUSTRY`, `CITY` (city name only), `STATE` (2-letter abbreviation), `BUSINESS_ADDRESS` (full street address), `PHONE`, `EMAIL`, `GOOGLE_MAPS_IFRAME` (raw iframe embed code, or `null` if not provided), `DOMAIN` (e.g. `sunriseplumbing.com`, or `null` if unknown)
+Provided in the brief: `BUSINESS_NAME`, `INDUSTRY`, `CITY` (city name only), `STATE` (2-letter abbreviation), `BUSINESS_ADDRESS` (full street address), `PHONE`, `EMAIL`, `GOOGLE_MAPS_IFRAME` (raw iframe embed code, or `null` if not provided), `DOMAIN` (e.g. `sunriseplumbing.com`, or `null` if unknown — only used for og:image, og:url, canonical, and hreflang tags; all internal links use absolute paths like `/terms-and-conditions/`).
 
 The combined `CITY_STATE` = "`CITY`, `STATE`" (e.g. "Phoenix, AZ") is used in copy, meta tags, and schema. `CITY` alone is used for SEO page titles and filenames (lowercase, no spaces, e.g. "phoenix").
 
@@ -121,26 +111,11 @@ The combined `CITY_STATE` = "`CITY`, `STATE`" (e.g. "Phoenix, AZ") is used in co
 
 ---
 
-### Round 2 — Services
+### Inputs — Services
 
-Once `INDUSTRY` is known, ask:
-
-> *"How many services would you like to feature on your website?"*
-
-Wait for `SERVICE_COUNT`. Then generate **`SERVICE_COUNT + 4`** numbered suggestions — always show 4 more than the client asked for, because they may not offer every service. Order from most common to most specialized. Also identify and recommend the **main service** — the umbrella service that encompasses all the sub-services (e.g. "Plumbing Services" for a plumber, "Roofing Services" for a roofer). This main service becomes the homepage theme.
-
-> *"Here are [SERVICE_COUNT + 4] of the most popular services for [INDUSTRY] businesses. I've included a few extras since you may not offer all of them. Pick the [SERVICE_COUNT] that fit your business — just tell me the numbers or names:*
->
-> *1. [Service Name] — [one-line description]*
-> *2. [Service Name] — [one-line description]*
-> *3. [Service Name] — [one-line description]*
-> *...*
->
-> *💡 My suggestion for your main service (homepage theme): **[Main Service Name]** — this is the umbrella service that covers everything your business does. Your homepage will be built around this theme and will reference all the sub-services you pick above. Let me know if you'd prefer a different main service.*"
-
-Wait for the client to select their services (by number, by name, or a mix). They may also provide their own services not on the list. Once the service list and main service are confirmed, store:
-- `MAIN_SERVICE` — the umbrella service for the homepage (e.g. "Plumbing Services", "Roofing Services")
-- `SERVICES` — the list of sub-service pages to build
+Provided in the brief:
+- `MAIN_SERVICE` — the umbrella service for the homepage (e.g. "Plumbing Services", "Roofing Services"). If empty, derive a sensible umbrella service from `INDUSTRY`.
+- `SERVICES` — the list of sub-service pages to build. If empty, propose a reasonable set for the `INDUSTRY` (see `references/industry-services.md`) and proceed.
 
 **Homepage theming rule:** The homepage (`index.html`) is themed around `MAIN_SERVICE`. The hero headline, meta title, h1, and overall copy focus on this umbrella service. The Services section on the homepage showcases all the individual `SERVICES` as sub-services, linking to their dedicated pages. This creates the hub-and-spoke SEO structure — the homepage targets the broad industry keyword while each service page targets a specific long-tail keyword.
 
@@ -172,7 +147,7 @@ Works natively on GitHub Pages, Netlify, Vercel, Cloudflare Pages, and any host 
 
 ## CRITICAL NO-PRICING RULE — READ CAREFULLY
 
-**No specific pricing appears ANYWHERE on the website.** Not in the hero, services, banner, FAQs, About, reviews, Privacy, T&C, or any other section. The client's pricing info gathered in Round 6 is used only to inform Claude's positioning — never to generate on-page copy that quotes numbers.
+**No specific pricing appears ANYWHERE on the website.** Not in the hero, services, banner, FAQs, About, reviews, Privacy, T&C, or any other section. The client's pricing/offer info from the brief is used only to inform positioning — never to generate on-page copy that quotes numbers.
 
 **Forbidden everywhere:**
 - Dollar amounts: `$99`, `$199`, `$500+` ❌
@@ -237,53 +212,29 @@ The business name appears in the **navigation logo area** (next to the logo imag
 
 If `BUSINESS_TYPE = national`, strip any location suffix from the H1 — clean service names only.
 
-Then ask:
-
-> *"One more quick question about your services — should the location be added to the end of each service page name for local SEO? This affects the filename, the page title, and the main heading on each service page.*
->
-> *For example:*
-> - *Without location: title "Residential Roofing" → `residential-roofing/index.html` (served at `/residential-roofing/`)*
-> - *With location: title "Residential Roofing Phoenix, AZ" → `residential-roofing-phoenix-az/index.html` (served at `/residential-roofing-phoenix-az/`)*
->
-> *Adding the location helps Google rank you for local searches. Recommended if you serve one primary city.*"
-
-Store as `LOCATION_IN_FILENAMES` = yes or no.
+`LOCATION_IN_FILENAMES` (yes/no) is provided in the brief. It controls whether the location is appended to each service page's filename, title, and H1 for local SEO:
+- Without location: title "Residential Roofing" → `residential-roofing/index.html` (served at `/residential-roofing/`)
+- With location: title "Residential Roofing Phoenix, AZ" → `residential-roofing-phoenix-az/index.html` (served at `/residential-roofing-phoenix-az/`)
 
 **Slug & folder derivation rule — MANDATORY:** The slug is always the SEO `<title>` converted to lowercase with spaces replaced by hyphens, commas and punctuation removed, `ñ` → `n`, and all accent marks stripped. That slug becomes a **folder name** containing an `index.html` file. The public URL is the folder path with a trailing slash (no `.html` extension anywhere). The title IS the slug — never derive them independently.
 
 - If **yes**: `<title>Drain Cleaning Phoenix, AZ</title>` → file `drain-cleaning-phoenix-az/index.html`, URL `/drain-cleaning-phoenix-az/`, `<h1>Drain Cleaning Phoenix AZ</h1>`
 - If **no**: `<title>Drain Cleaning</title>` → file `drain-cleaning/index.html`, URL `/drain-cleaning/`, `<h1>Drain Cleaning</h1>`
 
-Lock in the final `SERVICES` list and `LOCATION_IN_FILENAMES` before moving on.
-
-See `references/industry-services.md` for suggestions by vertical. If the industry isn't listed, generate suggestions dynamically. **Never assume the client offers every service in their industry — suggestions are a starting point only. The client always has the final word.**
+See `references/industry-services.md` for suggestions by vertical. If the industry isn't listed, generate suggestions dynamically.
 
 ---
 
-### Round 3 — Branding
+### Inputs — Branding
 
-Ask these together:
+Provided in the brief: `LOGO`, `FAVICON_LIGHT` (for light browser themes), `FAVICON_DARK` (for dark browser themes), `COLOR_PRIMARY`, `COLOR_HOVER`, `TAGLINE`, `FONT_HEADING`, `FONT_BODY`.
 
-> *"Now let's talk about your brand's look:*
-> 1. *Do you have a logo? Please provide one of the following:*
->    - *A URL (e.g. https://yourdomain.com/logo.png)*
->    - *A filename if it's already in your project folder (e.g. logo.png)*
->    - *Upload the file directly in this chat*
->    - *Or say "no logo yet" and I'll use a styled text logo as a placeholder*
-> 2. *I need TWO favicons (the small icon shown in the browser tab) — one for light browser themes, one for dark browser themes. Each should be a PNG with a **transparent background**. For each, you can provide a URL, filename, upload, or say "no favicon yet" and I'll generate a simple one from your brand color.*
->    - *Favicon for light browser themes (ideally a dark-colored logo visible on a white tab)*
->    - *Favicon for dark browser themes (ideally a light-colored logo visible on a dark tab)*
->    - *If you only have one PNG, I can use it for both — but it won't visually adapt between themes.*
-> 3. *What is your main brand color? Please give me the HEX code (e.g. #FF6B00). If you're not sure, describe the color and I'll suggest one.*
-> 4. *What color should buttons turn when someone hovers over them? HEX code please. (This is usually a darker shade of your main color.)*
-> 5. *Do you have a tagline or one-liner that describes what you do? If not, I can write one for you based on your business.*
-> 6. *Here are the default fonts for your site:*
->    - *Headings (h1, h2, h3, h4): **Montserrat** — bold, weight 800, capitalized*
->    - *Body text (paragraphs, labels, buttons): **Open Sans** — clean and easy to read*
->
->    *Are you happy with these, or would you like to use different fonts? If you want changes, just tell me the font name(s) and which one is for headings vs. body text — I'll pull them from Google Fonts.*"
-
-Store as: `LOGO`, `FAVICON_LIGHT` (for light browser themes), `FAVICON_DARK` (for dark browser themes), `COLOR_PRIMARY`, `COLOR_HOVER`, `TAGLINE`, `FONT_HEADING`, `FONT_BODY`
+Notes on these inputs:
+- A logo may be a URL, a filename already in the project, an uploaded data URL, or absent ("no logo yet" → use a styled text logo placeholder).
+- Two favicons (PNG, transparent background): one for light browser tabs (ideally a dark logo), one for dark tabs (ideally a light logo). If only one is provided, use it for both (no theme adaptation). If neither, generate a simple one from `COLOR_PRIMARY`.
+- `COLOR_PRIMARY` and `COLOR_HOVER` are HEX codes. If a color is missing, choose an appropriate one for the `INDUSTRY`.
+- `TAGLINE` may be empty → write one from the business details.
+- Default fonts are `FONT_HEADING` = **Montserrat** (headings, weight 800, capitalized) and `FONT_BODY` = **Open Sans** (body). Use whatever the brief specifies; load both from Google Fonts.
 
 **Logo handling rules:**
 - If a URL is provided: use it directly in `<img src="URL">`
@@ -341,9 +292,7 @@ If the client doesn't know their HEX codes, suggest appropriate colors based on 
 
 ### Page Layout — Fixed (No Client Input Needed)
 
-The page layout is fixed and applied to all pages automatically. **Do not ask the client about the layout** — it is not configurable. Simply inform them as part of the build summary:
-
-> *"Your site will follow a proven conversion-focused layout used across all pages."*
+The page layout is fixed and applied to all pages automatically. It is not configurable.
 
 **MANDATORY section order for all pages except Privacy Policy and Terms & Conditions:**
 
@@ -383,57 +332,35 @@ from drain cleaning to water heaters? Explore all our services on our homepage.<
 
 ---
 
-### Round 4 — Features
+### Inputs — Features
 
-Ask these together:
-
-> *"A few quick yes/no questions about your site's features:*
-> 1. *Do you need an online appointment booking widget? (like Calendly, Acuity, or TidyCal)*
-> 2. *Do you need a Spanish version of the site?*"
-
-- If **booking = yes**: Ask *"What booking platform do you use, or would you like me to recommend one? If you already have an embed code, paste it here."* Store as `BOOKING_EMBED`.
-- If **Spanish = yes**: Ask *"What regional variety of Spanish should the site use? For most businesses, naming the country is enough — e.g. 'Mexican Spanish', 'Colombian Spanish', 'US Spanish (neutral)'. If you're targeting a specific city or region and want the language to feel very local, you can be more specific — e.g. 'Monterrey, Mexico' or 'Medellín, Colombia'."* Store as `SPANISH_REGION`. Then set `BILINGUAL = yes` — the site will be delivered as English `index.html` (at root, served at `/`) plus a Spanish `[spanish-home-slug]/index.html` (served at `/[spanish-home-slug]/`) with a language toggle in the nav.
-
-Then ask separately:
-
-> *"Your site will have CTA buttons that open a multi-step popup — it asks the visitor 2–3 qualifying questions and then collects their name, phone, and email. This popup appears in the Hero, Banner, and Footer sections. What Pabbly Connect webhook URL should the modal form submit to?"*
-
-Store as `MODAL_WEBHOOK_URL`.
+Provided in the brief:
+- `BOOKING_EMBED` — an appointment-booking widget embed (Calendly, Acuity, TidyCal, etc.), or empty if booking is not used.
+- `BILINGUAL` (yes/no) and `SPANISH_REGION` (e.g. "Mexican Spanish", "Colombian Spanish", "US Spanish (neutral)", or a specific city/region). When `BILINGUAL = yes`, deliver English `index.html` (at root, served at `/`) plus a Spanish `[spanish-home-slug]/index.html` (served at `/[spanish-home-slug]/`) with a language toggle in the nav.
+- `MODAL_WEBHOOK_URL` — the Pabbly Connect webhook the multi-step lead-capture popup submits to. The popup asks the visitor 2–3 qualifying questions, then collects name, phone, and email, and appears in the Hero, Banner, and Footer sections.
 
 ---
 
-### Round 5 — Social Proof & Extras
+### Inputs — Social Proof & Extras
 
-Ask these together:
-
-> *"Almost there! A few more optional but high-impact items:*
-> 1. *For the Reviews section — do you have real customer reviews you'd like to use, or should I write realistic placeholder reviews for now? If you have them, please share: the reviewer's name, their city, and what they said. Even 2–3 real ones make a big difference in credibility.*
-> 2. *Do you have a hero image you'd like to use at the top of the site, or should I use a bold color/gradient background?*
-> 3. *Any frequently asked questions you'd like answered on the site?*
-> 4. *When someone shares your website link on Facebook, LinkedIn, WhatsApp, or other social platforms, a preview image appears alongside your business name and description. Do you have a specific image you'd like to use for this? (ideally 1200×630px, JPG or PNG) — or should I generate one using AI that fits your brand and industry?*"
+Provided in the brief: a hero-image choice (a specific image, or none → use a bold color/gradient background), an FAQ list (or none → write industry-appropriate FAQs), plus the reviews and OG-image inputs handled below.
 
 **OG image handling based on response:**
-- If client provides an image file or URL → store as `OG_IMAGE_SOURCE = client`, use it as-is. Reference it as `images/og-image.webp` (convert to WebP and compress if a file is uploaded) or use the URL directly.
-- If client says generate or provides nothing → set `OG_IMAGE_SOURCE = generated`. Add to `images_manifest.json` (see Step 5 for prompt rules). Store as `OG_IMAGE = images/og-image.webp`.
+- If the brief provides an OG image (file or URL) → `OG_IMAGE_SOURCE = client`, use it as-is. Reference it as `images/og-image.webp` (convert to WebP and compress if a file is uploaded) or use the URL directly.
+- If the brief says generate or provides nothing → `OG_IMAGE_SOURCE = generated`. Add to `images_manifest.json` (see Step 5 for prompt rules). Store as `OG_IMAGE = images/og-image.webp`.
 
-**Reviews handling based on response:**
-- If client provides real reviews → use them exactly as given. Extract the most emotionally resonant phrase for the `h3` title. Format name as `— First Name Last Name, CITY`.
-- If client says "generate them" or provides nothing → write 3 realistic, industry-specific reviews that sound authentic for the business type and city. Each must reference a specific problem solved or fear removed. Add HTML comment on each card: `<!-- Placeholder review — replace with real customer testimonial -->`
-- If client provides 1–2 real reviews → use those and fill remaining cards with generated placeholders, clearly commented.
-
-Store provided reviews as: `REVIEWS` (array of `{name, city, text}`). Store preference as `REVIEWS_SOURCE` = `client` or `generated`.
+**Reviews handling (`REVIEWS` array of `{name, city, text}`, and `REVIEWS_SOURCE` = `client` or `generated`, from the brief):**
+- If the brief provides real reviews → use them exactly as given. Extract the most emotionally resonant phrase for the `h3` title. Format name as `— First Name Last Name, CITY`.
+- If `REVIEWS_SOURCE = generated` or none are provided → write 3 realistic, industry-specific reviews that sound authentic for the business type and city. Each must reference a specific problem solved or fear removed. Add HTML comment on each card: `<!-- Placeholder review — replace with real customer testimonial -->`
+- If the brief provides 1–2 real reviews → use those and fill remaining cards with generated placeholders, clearly commented.
 
 ---
 
-### Round 6 — Audience & Market Research
+### Inputs — Audience & Market Research
 
-This is the most important round for copywriting quality. Introduce it warmly:
+This is the most important input for copywriting quality. The brief contains the client's answers to the research questions below (grouped as shown). Use them to drive every headline, section, and CTA. Where an answer is thin or missing, infer the most reasonable value for the `INDUSTRY` and `CITY_STATE` and proceed — do not ask.
 
-> *"Last section — and this one is what makes your website actually convert visitors into customers instead of just looking pretty. The more detail you give me here, the more persuasive your copy will be. Answer as many as you can:*"
-
-Then ask all of the following, grouped as shown:
-
-**Your ideal customer:**
+**Their ideal customer:**
 - Who is your perfect customer? (homeowner, renter, business owner, age range, income level?)
 - What does their situation look like the moment they realize they need you?
 
@@ -477,18 +404,16 @@ Then ask all of the following, grouped as shown:
 
 ### Research Synthesis (Before Writing Any Copy)
 
-After Round 6, synthesize the answers before touching design or code. Present a short brief to the client:
+Using the research in the brief, synthesize the following internally before touching design or code (do not present it to the client or wait for approval — proceed straight to building):
 
 1. **#1 Pain to lead with** — the most emotionally charged problem → drives the hero headline
 2. **#1 Objection to neutralize** — the biggest fear → gets addressed in Trust Bar, FAQ, or About
 3. **USP** — the one thing this business does better → woven throughout all copy
 4. **Dominant emotion** — urgency / reassurance / trust / exclusivity / joy
-5. **3 hero headline options** — show the client three choices, let them pick or mix
+5. **Hero headline** — pick the strongest option for the page goal (generate a few internally, choose the best)
 6. **Objection map** — which section handles which objection
 
-Ask the client: *"Does this capture your business accurately? Any corrections before I build?"*
-
-Get a thumbs up, then move to the Page Conversion Strategy below.
+Then move to the Page Conversion Strategy below.
 
 ---
 
@@ -615,7 +540,7 @@ The client provides exactly two colors. Everything else is derived from them.
 
 ### Typography System
 
-**Apply `FONT_HEADING` and `FONT_BODY` from Round 3.** Defaults are Montserrat (headings) and Open Sans (body) unless the client specified otherwise. Always load both fonts from Google Fonts — construct the `@import` URL using the actual font names confirmed in Round 3.
+**Apply `FONT_HEADING` and `FONT_BODY` from the brief.** Defaults are Montserrat (headings) and Open Sans (body) unless the brief specifies otherwise. Always load both fonts from Google Fonts — construct the `@import` URL using the actual font names from the brief.
 
 ```css
 /* Load Google Fonts — replace with FONT_HEADING and FONT_BODY as confirmed */
@@ -1261,7 +1186,7 @@ All pages use the fixed layout defined above. Build sections in this exact order
    - Written in the reviewer's natural voice — conversational, specific, credible
    - Must mention at least one specific detail: a problem solved, a fear removed, a result achieved, or how fast/easy the experience was
    - Avoid generic superlatives ("amazing", "fantastic") without specifics to back them up
-   - If testimonials were provided in Round 5: use them, extract the most emotionally resonant excerpt, and write the `h3` title around its core message
+   - If testimonials were provided in the brief: use them, extract the most emotionally resonant excerpt, and write the `h3` title around its core message
    - If no testimonials were provided: write realistic, industry-specific reviews that sound authentic — not marketing copy. Make them plausible for the city, industry, and business type. Add an HTML comment: `<!-- Placeholder review — replace with real customer testimonial -->`
 
    ```css
@@ -1765,7 +1690,7 @@ All pages use the fixed layout defined above. Build sections in this exact order
 
    ### 6 FAQ Items
 
-   **Always generate exactly 6 FAQs** — never fewer, never more. If the client provided FAQs in Round 5, use those first and fill remaining slots with generated ones. All 6 must be relevant to the specific `INDUSTRY` and page service.
+   **Always generate exactly 6 FAQs** — never fewer, never more. If the brief provided FAQs, use those first and fill remaining slots with generated ones. All 6 must be relevant to the specific `INDUSTRY` and page service.
 
    **Question copy rules (`h3` inside `.faq-question`):**
    - Phrased as a real question the reader is already thinking — not a company talking point
@@ -2116,13 +2041,10 @@ Before building the modal, Claude must generate 2–3 qualifying questions tailo
 - Step 1: "What project are you planning?" → Kitchen / Bathroom / Addition / Other
 - Step 2: "What's your timeline?" → ASAP / 1–3 months / 3–6 months / Just exploring
 
-Present the generated questions to the user before building the modal:
-> *"Here are the qualifying questions I'll use in your hero popup. Let me know if you'd like to change anything:*
-> *Step 1: [question + choices]*
-> *Step 2: [question + choices or text input]*
-> *Step 3: Full Name, Phone Number, Email Address (required)*"
-
-Wait for confirmation, then build.
+Generate the qualifying questions yourself from the `INDUSTRY` and the audience research in the brief, then build the modal directly (do not ask for confirmation). The modal always ends with a contact step:
+- Step 1: [question + choices]
+- Step 2: [question + choices or text input]
+- Step 3: Full Name, Phone Number, Email Address (required)
 
 ---
 
@@ -3216,8 +3138,8 @@ Add links to these pages in the Spanish nav About Us dropdown alongside the Engl
 - **No logo file yet?** Render a text-based logo using `--color-primary` in a bold heading font. Add an HTML comment: `<!-- Replace this with <img src="images/logo.png"> once logo is ready -->` so the client knows exactly where to swap it in.
 - **No booking widget yet?** Leave a clearly-marked placeholder `<div id="booking-widget"><p>Booking widget coming soon</p></div>` with a comment.
 - **Bilingual site — domain not yet known?** Use `href="#"` as a placeholder in hreflang and toggle link tags and leave an HTML comment: `<!-- Replace # with your actual domain URL before going live -->`.
-- **Multiple pages?** This skill produces single-page sites by default (one scrolling page per language). For true multi-page sites, create separate HTML files linked via nav. Ask the client if needed.
-- **Existing branding?** If the user provides a color palette or font, use it exactly — never override with defaults.
+- **Multiple pages?** This methodology produces single-page sites by default (one scrolling page per language) plus the dedicated service/legal pages. Build multi-page only if the brief requests it.
+- **Existing branding?** If the brief provides a color palette or font, use it exactly — never override with defaults.
 
 ---
 
