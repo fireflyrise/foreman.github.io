@@ -104,6 +104,33 @@ model Integration {
   @@unique([userId, provider])
 }
 
+// Durable, queryable error store — the source of truth for failures.
+// Platform stdout (Railway/Render/etc.) is ephemeral and unqueryable; this is.
+model ErrorLog {
+  id           String    @id @default(cuid())
+  // Foreman projectId when the error is tied to one, else a component label
+  // ("system", "github-oauth", "notifier", …).
+  project      String
+  // Short, stable, grep-able code (e.g. "AGENT_SESSION_ERROR"). See errors/types.ts.
+  errorType    String
+  errorMessage String
+  // Arbitrary diagnosis payload (ids, params) to reproduce.
+  errorContext Json      @default("{}")
+  // LOW | MEDIUM | HIGH | CRITICAL
+  severity     String
+  // Hosting platform / service the error came from, if relevant.
+  platform     String?
+  // Set when an alert digest has been sent (HIGH/CRITICAL only).
+  notifiedAt   DateTime?
+  resolved     Boolean   @default(false)
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([project, severity, resolved])
+  @@index([createdAt])
+  @@index([resolved, severity, notifiedAt])
+}
+
 model WebCreatorSpec {
   id          String   @id @default(cuid())
   projectId   String   @unique

@@ -11,6 +11,9 @@ import { githubRoutes } from "./routes/github.js";
 import { projectRoutes } from "./routes/projects.js";
 import { sessionRoutes } from "./routes/sessions.js";
 import { integrationRoutes } from "./routes/integrations.js";
+import { recordError } from "./errors/store.js";
+import { ErrorType } from "./errors/types.js";
+import { startNotifier } from "./errors/notifier.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,11 +46,25 @@ async function main(): Promise<void> {
     });
   }
 
+  // Process-level safety nets — record before the platform recycles the container.
+  process.on("uncaughtException", (err) => {
+    void recordError({ errorType: ErrorType.UNCAUGHT_EXCEPTION, error: err });
+    app.log.error(err, "uncaughtException");
+  });
+  process.on("unhandledRejection", (reason) => {
+    void recordError({ errorType: ErrorType.UNHANDLED_REJECTION, error: reason });
+    app.log.error(reason as Error, "unhandledRejection");
+  });
+
+  startNotifier();
+
   await app.listen({ port: env.port, host: "0.0.0.0" });
   app.log.info(`Foreman server listening on :${env.port}`);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error(err);
+  // Best-effort durable record of a boot failure before exiting.
+  await recordError({ errorType: ErrorType.SERVER_BOOT_FAILURE, error: err }).catch(() => undefined);
   process.exit(1);
 });

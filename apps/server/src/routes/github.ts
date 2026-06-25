@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { getUserId, requireAuth } from "../auth.js";
 import { env } from "../env.js";
+import { recordError } from "../errors/store.js";
+import { ErrorType } from "../errors/types.js";
 import {
   exchangeCodeForToken,
   githubAuthorizeUrl,
@@ -42,6 +44,11 @@ export async function githubRoutes(app: FastifyInstance): Promise<void> {
       await persistGithubToken(userId, token);
       return reply.redirect(`${env.webRedirect()}?github=connected`);
     } catch (err) {
+      void recordError({
+        errorType: ErrorType.GITHUB_OAUTH_CALLBACK_FAILURE,
+        error: err,
+        project: "github-oauth",
+      });
       return reply.code(500).send(`GitHub connect failed: ${(err as Error).message}`);
     }
   });
@@ -51,6 +58,11 @@ export async function githubRoutes(app: FastifyInstance): Promise<void> {
       const repos = await listRepos(getUserId(req));
       return { repos };
     } catch (err) {
+      void recordError({
+        errorType: ErrorType.GITHUB_REPO_LIST_FAILURE,
+        error: err,
+        project: "github",
+      });
       return reply.code(400).send({ error: (err as Error).message });
     }
   });
