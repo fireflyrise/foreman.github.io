@@ -97,6 +97,29 @@ build from it without ever re-interviewing.
 - Instruction builder: `buildWebCreatorInstructions(spec, playbookPath)` +
   `formatWebBrief(spec)` in `apps/server/src/agent/prompts.ts`.
 
+## Error capture & triage system (app-owned — NOT a log drain / APM)
+
+Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable table.
+1. **Durable store** — `ErrorLog` model (`prisma/schema.prisma`, migration `3_error_log`):
+   project, errorType (grep-able code), errorMessage, errorContext (JSON), severity
+   (LOW/MEDIUM/HIGH/CRITICAL), platform, notifiedAt, resolved+resolvedAt, createdAt;
+   indexes on (project,severity,resolved), createdAt, (resolved,severity,notifiedAt).
+   - `apps/server/src/errors/types.ts` — `ErrorType` constants + `DEFAULT_SEVERITY`.
+   - `apps/server/src/errors/store.ts` — `recordError()` (never throws). Wired into every
+     real catch: AgentSession (session/PR/merge), routes (github oauth/repos, gemini logo,
+     session start, web-creator run, railway refresh), and `index.ts` (boot failure +
+     uncaughtException/unhandledRejection).
+2. **Notifier** — `apps/server/src/errors/notifier.ts`: scheduled scan of unsent
+   HIGH/CRITICAL (notifiedAt IS NULL) → one digest to `ALERT_WEBHOOK_URL` (Slack/generic)
+   → stamps notifiedAt (no re-alert). NOTIFIER_FAILURE is MEDIUM (no self-alert loop).
+   Env: `ALERT_WEBHOOK_URL`, `ALERT_POLL_INTERVAL_MS`, `PLATFORM`.
+3. **Triage routine** — `docs/error-triage-routine.md`: daily Claude prompt
+   (pull/group/rank → grep errorType → categorize real-bug/transient/config/stale → act →
+   resolve only when truly fixed) with guardrails (never push to main, never weaken
+   logging, no migrations/large refactors, branch→draft PR→green CI→merge). Needs prod
+   `DATABASE_URL` (doc flags that cloud/sandboxed sessions usually can't reach it). Helper:
+   `pnpm --filter @foreman/server errors:report -- --json --days 7`.
+
 ## Status — DONE
 
 - [x] Monorepo scaffold, shared types, Fastify + Vite skeletons, Prisma/Postgres.
@@ -111,6 +134,7 @@ build from it without ever re-interviewing.
 - [x] Initial Prisma migrations; Dockerfile for Railway.
 - [x] Vitest: AsyncInbox sequencing + secrets round-trip/tamper (6/6 pass).
 - [x] Web Creator: full skill intake form + playbook injection + rewritable Module 2 goal.
+- [x] Error capture & triage: ErrorLog table + recordError wiring + digest notifier + triage doc.
 
 ## Verification commands
 

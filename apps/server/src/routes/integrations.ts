@@ -6,6 +6,8 @@ import { getMeta, isConnected } from "../integrations/store.js";
 import { saveRailway } from "../integrations/railway.js";
 import { generateLogo, saveGemini } from "../integrations/gemini.js";
 import { env } from "../env.js";
+import { recordError } from "../errors/store.js";
+import { ErrorType } from "../errors/types.js";
 
 export async function integrationRoutes(app: FastifyInstance): Promise<void> {
   app.addHook("preHandler", requireAuth);
@@ -60,6 +62,12 @@ export async function integrationRoutes(app: FastifyInstance): Promise<void> {
       });
       return { logo };
     } catch (err) {
+      void recordError({
+        errorType: ErrorType.GEMINI_LOGO_FAILURE,
+        error: err,
+        project: "gemini",
+        context: { companyName: parsed.data.companyName },
+      });
       return reply.code(400).send({ error: (err as Error).message });
     }
   });

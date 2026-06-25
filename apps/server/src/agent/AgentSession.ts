@@ -6,6 +6,8 @@ import { RepoManager } from "../git/RepoManager.js";
 import { openPullRequest, mergePullRequest } from "../integrations/github.js";
 import { createRailwayMcpServer } from "./mcp/railwayLogsTool.js";
 import { createLogoMcpServer } from "./mcp/logoTool.js";
+import { recordError } from "../errors/store.js";
+import { ErrorType } from "../errors/types.js";
 import {
   buildAutonomyAppend,
   buildInstructionMessage,
@@ -211,6 +213,17 @@ export class AgentSession {
       }
     } catch (err) {
       this.emit({ type: "log", level: "error", text: `Session error: ${(err as Error).message}` });
+      await recordError({
+        errorType: ErrorType.AGENT_SESSION_ERROR,
+        error: err,
+        project: this.projectId,
+        context: {
+          sessionDbId: this.sessionDbId,
+          branchName: this.branchName,
+          authMode: this.effectiveMode(),
+          instructionId: this.currentInstruction?.id ?? null,
+        },
+      });
       this.setStatus("error");
       await this.finalize();
     }
@@ -336,9 +349,15 @@ export class AgentSession {
     }
 
     // Git/PR flow for this instruction.
-    await this.handleGitForInstruction().catch((e) =>
-      this.emit({ type: "log", level: "warn", text: `Git/PR step failed: ${(e as Error).message}` }),
-    );
+    await this.handleGitForInstruction().catch((e) => {
+      this.emit({ type: "log", level: "warn", text: `Git/PR step failed: ${(e as Error).message}` });
+      void recordError({
+        errorType: ErrorType.AGENT_GIT_PR_FAILURE,
+        error: e,
+        project: this.projectId,
+        context: { branchName: this.branchName, prNumber: this.prNumber, mergePolicy: this.mergePolicy },
+      });
+    });
 
     this.currentInstruction = null;
 
@@ -421,9 +440,15 @@ export class AgentSession {
   private async maybeMergeAtEnd(): Promise<void> {
     if (this.mergePolicy === "PER_SESSION" && this.prNumber !== null) {
       const [owner, repo] = await this.repoFullName();
-      await mergePullRequest(this.userId, owner, repo, this.prNumber, "squash").catch((e) =>
-        this.emit({ type: "log", level: "warn", text: `Final merge failed: ${(e as Error).message}` }),
-      );
+      await mergePullRequest(this.userId, owner, repo, this.prNumber, "squash").catch((e) => {
+        this.emit({ type: "log", level: "warn", text: `Final merge failed: ${(e as Error).message}` });
+        void recordError({
+          errorType: ErrorType.AGENT_GIT_MERGE_FAILURE,
+          error: e,
+          project: this.projectId,
+          context: { prNumber: this.prNumber, branchName: this.branchName },
+        });
+      });
       this.emit({ type: "git", action: "merge", detail: `Merged PR #${this.prNumber} into main` });
     }
     await this.finalize();

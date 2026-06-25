@@ -8,6 +8,8 @@ import { SessionRegistry } from "../agent/SessionRegistry.js";
 import { buildWebCreatorInstructions } from "../agent/prompts.js";
 import { writePlaybookForProject } from "../agent/webCreatorPlaybook.js";
 import { fetchLatestLogs } from "../integrations/railway.js";
+import { recordError } from "../errors/store.js";
+import { ErrorType } from "../errors/types.js";
 
 export async function sessionRoutes(app: FastifyInstance): Promise<void> {
   // Start a Module 1 run for a project.
@@ -26,6 +28,12 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
         });
         return { ok: true, session: session.snapshot() };
       } catch (err) {
+        void recordError({
+          errorType: ErrorType.SESSION_START_FAILURE,
+          error: err,
+          project: id,
+          context: { module: "software" },
+        });
         return reply.code(400).send({ error: (err as Error).message });
       }
     },
@@ -88,6 +96,12 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
         });
         return { ok: true, session: session.snapshot() };
       } catch (err) {
+        void recordError({
+          errorType: ErrorType.WEBCREATOR_RUN_FAILURE,
+          error: err,
+          project: id,
+          context: { companyName: spec.companyName, industry: spec.industry },
+        });
         return reply.code(400).send({ error: (err as Error).message });
       }
     },
@@ -122,6 +136,11 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
         }
         return { ok: true, injected: false, status };
       } catch (err) {
+        void recordError({
+          errorType: ErrorType.RAILWAY_REFRESH_FAILURE,
+          error: err,
+          project: id,
+        });
         return reply.code(400).send({ error: (err as Error).message });
       }
     },

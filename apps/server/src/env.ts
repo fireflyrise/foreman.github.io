@@ -62,6 +62,14 @@ export const env = {
 
   workspacesDir: optional("WORKSPACES_DIR", "./workspaces"),
 
+  // ── Error capture / alerting ──
+  /** Hosting platform label stamped on error rows (informational). */
+  platform: optional("PLATFORM", "railway"),
+  /** Webhook the alert digest POSTs to (Slack incoming-webhook or generic JSON). */
+  alertWebhookUrl: optional("ALERT_WEBHOOK_URL"),
+  /** How often the notifier scans for unsent HIGH/CRITICAL errors (ms). */
+  alertPollIntervalMs: int("ALERT_POLL_INTERVAL_MS", 300000),
+
   /** Where to send the browser after an OAuth round-trip (the SPA). */
   webRedirect(): string {
     // In production the SPA is served from the same origin; in dev use the
