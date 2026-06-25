@@ -1,0 +1,31 @@
+node_modules/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# prisma
+apps/server/prisma/*.db
+apps/server/prisma/dev.db*
+
+# runtime working dirs (cloned project repos)
+workspaces/
+data/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/

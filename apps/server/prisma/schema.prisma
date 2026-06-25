@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique
+  createdAt    DateTime      @default(now())
+  projects     Project[]
+  integrations Integration[]
+}
+
+model Project {
+  id                   String           @id @default(cuid())
+  userId               String
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String
+  repoOwner            String
+  repoName             String
+  repoFullName         String
+  defaultBranch        String           @default("main")
+  mergePolicy          String           @default("PER_INSTRUCTION")
+  // Auth for Software Creator (Module 1) runs: "subscription" (Max) or "api".
+  // Web Creator (Module 2) always uses the API key.
+  authMode             String           @default("subscription")
+  sdkSessionId         String?
+  railwayProjectId     String?
+  railwayServiceId     String?
+  railwayEnvironmentId String?
+  createdAt            DateTime         @default(now())
+  goal                 Goal?
+  instructions         Instruction[]
+  sessions             Session[]
+  webSpec              WebCreatorSpec?
+
+  @@index([userId])
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mainGoal    String   @default("")
+  limitations String   @default("")
+  reasoning   String   @default("")
+  updatedAt   DateTime @updatedAt
+}
+
+model Instruction {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  order     Int
+  text      String
+  status    String   @default("pending")
+  costUsd   Float?
+  createdAt DateTime @default(now())
+
+  @@index([projectId, order])
+}
+
+model Session {
+  id           String         @id @default(cuid())
+  projectId    String
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  branchName   String
+  status       String         @default("idle")
+  sdkSessionId String?
+  prNumber     Int?
+  totalCostUsd Float          @default(0)
+  startedAt    DateTime       @default(now())
+  endedAt      DateTime?
+  events       SessionEvent[]
+
+  @@index([projectId])
+}
+
+model SessionEvent {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type      String
+  payload   Json
+  ts        DateTime @default(now())
+
+  @@index([sessionId, ts])
+}
+
+model Integration {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  String
+  encBlob   String
+  meta      Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider])
+}
+
+model WebCreatorSpec {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  companyName String
+  industry    String
+  accentHex   String
+  logoUrl     String?
+  logoPrompt  String?
+  createdAt   DateTime @default(now())
+}
