@@ -14,6 +14,11 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
   const qc = useQueryClient();
   const [module, setModule] = useState<Module>("software");
 
+  async function changeAuthMode(authMode: "subscription" | "api") {
+    await api.setAuthMode(project.id, authMode);
+    await qc.invalidateQueries({ queryKey: ["projects"] });
+  }
+
   async function del() {
     if (!confirm(`Delete project "${project.name}"? This does not affect the GitHub repo.`)) return;
     try {
@@ -38,6 +43,20 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
           </a>
           <span className="text-[11px] text-gray-500">branch: {project.defaultBranch}</span>
           <span className="text-[11px] text-gray-500">merge: {project.mergePolicy}</span>
+          <label
+            className="flex items-center gap-1 text-[11px] text-gray-500"
+            title="Which credential the Software Creator (Module 1) bills against. Web Creator always uses the API key."
+          >
+            software auth:
+            <select
+              value={project.authMode}
+              onChange={(e) => changeAuthMode(e.target.value as "subscription" | "api")}
+              className="rounded border border-edge bg-panel px-1 py-0.5 text-[11px] text-gray-200 outline-none"
+            >
+              <option value="subscription">Max subscription</option>
+              <option value="api">API key</option>
+            </select>
+          </label>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-edge p-0.5">

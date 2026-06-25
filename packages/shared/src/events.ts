@@ -1,4 +1,4 @@
-import type { InstructionStatus, SessionStatus } from "./types.js";
+import type { AuthMode, InstructionStatus, SessionStatus } from "./types.js";
 
 /**
  * SSE event types streamed from a running AgentSession to the UI console.
@@ -32,7 +32,7 @@ export type AgentEvent =
       instructionId: string | null;
     }
   | { type: "git"; action: string; detail: string }
-  | { type: "auth_mode"; mode: "subscription" | "api" }
+  | { type: "auth_mode"; mode: AuthMode }
   | {
       // Emitted when a subscription session hits the Max usage limit and is
       // paused awaiting the user's choice (continue on API key, or wait).
@@ -40,8 +40,5 @@ export type AgentEvent =
       detail: string;
     }
   | { type: "heartbeat" };
-
-/** Auth mode for an orchestrated session. */
-export type AuthMode = "subscription" | "api";
 
 export type AgentEventType = AgentEvent["type"];

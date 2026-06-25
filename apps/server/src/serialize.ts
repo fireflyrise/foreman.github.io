@@ -83,6 +83,7 @@ export function serializeProject(p: ProjectWithRelations): ProjectDTO {
     repoFullName: p.repoFullName,
     defaultBranch: p.defaultBranch,
     mergePolicy: p.mergePolicy as MergePolicy,
+    authMode: p.authMode as ProjectDTO["authMode"],
     railwayProjectId: p.railwayProjectId,
     railwayServiceId: p.railwayServiceId,
     railwayEnvironmentId: p.railwayEnvironmentId,

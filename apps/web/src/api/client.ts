@@ -79,6 +79,8 @@ export const api = {
   }) => req<{ project: ProjectDTO }>("POST", "/api/projects", input),
   renameProject: (id: string, name: string) =>
     req<{ project: ProjectDTO }>("PATCH", `/api/projects/${id}`, { name }),
+  setAuthMode: (id: string, authMode: "subscription" | "api") =>
+    req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/auth-mode`, { authMode }),
   deleteProject: (id: string) =>
     req<{ ok: boolean }>("DELETE", `/api/projects/${id}`),
 

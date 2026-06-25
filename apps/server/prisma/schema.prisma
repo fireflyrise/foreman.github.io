@@ -25,6 +25,9 @@ model Project {
   repoFullName         String
   defaultBranch        String           @default("main")
   mergePolicy          String           @default("PER_INSTRUCTION")
+  // Auth for Software Creator (Module 1) runs: "subscription" (Max) or "api".
+  // Web Creator (Module 2) always uses the API key.
+  authMode             String           @default("subscription")
   sdkSessionId         String?
   railwayProjectId     String?
   railwayServiceId     String?

@@ -10,6 +10,10 @@ export const IntegrationProvider = z.enum([
 export type IntegrationProvider = z.infer<typeof IntegrationProvider>;
 
 /** How finished work reaches `main`. */
+/** Which credential an orchestrated session bills against. */
+export const AuthMode = z.enum(["subscription", "api"]);
+export type AuthMode = z.infer<typeof AuthMode>;
+
 export const MergePolicy = z.enum([
   "PER_INSTRUCTION", // merge the session branch after each instruction completes
   "PER_SESSION", // open one PR and merge once at the end of the session
@@ -47,6 +51,7 @@ export interface ProjectDTO {
   repoFullName: string;
   defaultBranch: string;
   mergePolicy: MergePolicy;
+  authMode: AuthMode;
   railwayProjectId: string | null;
   railwayServiceId: string | null;
   railwayEnvironmentId: string | null;
@@ -185,3 +190,8 @@ export const ResolveLimitInput = z.object({
   choice: z.enum(["api", "wait"]),
 });
 export type ResolveLimitInput = z.infer<typeof ResolveLimitInput>;
+
+export const SetAuthModeInput = z.object({
+  authMode: AuthMode,
+});
+export type SetAuthModeInput = z.infer<typeof SetAuthModeInput>;

@@ -17,7 +17,11 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       const project = await prisma.project.findFirst({ where: { id, userId: getUserId(req) } });
       if (!project) return reply.code(404).send({ error: "Not found" });
       try {
-        const session = await SessionRegistry.start({ projectId: id, userId: getUserId(req) });
+        const session = await SessionRegistry.start({
+          projectId: id,
+          userId: getUserId(req),
+          authMode: project.authMode === "api" ? "api" : "subscription",
+        });
         return { ok: true, session: session.snapshot() };
       } catch (err) {
         return reply.code(400).send({ error: (err as Error).message });
