@@ -22,8 +22,8 @@ Full design lives in `README.md` and the approved plan at
 - Repo: `fireflyrise/foreman.github.io` (was empty; this is a from-scratch build).
 - Working branch: `claude/sweet-heisenberg-yeek0y`.
 - An empty `main` baseline commit was created so the PR diff shows the whole project.
-- **PR #1** (draft): https://github.com/fireflyrise/foreman.github.io/pull/1
-- CI is green on the latest commit. PR is still a **draft** (not yet merged).
+- **PR #1**: MERGED into `main` (initial full scaffold). CI green.
+- Follow-up work (Web Creator overhaul) continues on the same branch toward a new PR.
 
 ## Architecture (TypeScript monorepo: pnpm + Turborepo)
 
@@ -63,6 +63,25 @@ Key files:
   (`limit_paused`) and the console shows "continue on API key / wait"
   (`/session/resolve-limit`, user chose **notify & let me choose**).
 
+## Web Creator (Module 2) — full intake + playbook
+
+The original WebCreator skill is stored verbatim at `apps/server/playbook/webcreator.md`
+and loaded by `apps/server/src/agent/webCreatorPlaybook.ts`. On a Module 2 run, it's
+written to `<workspacesDir>/<projectId>.webcreator-playbook.md` (outside the client repo)
+and the seeded instructions tell Claude Code to read and follow it exactly (no re-interview).
+
+- The form (`apps/web/src/components/WebCreatorForm.tsx`) collects ALL skill interview
+  rounds: business identity, services, branding (2 colors, fonts, logo, favicons),
+  features (booking, bilingual, modal webhook), social proof (reviews, FAQs, hero/OG),
+  and Round 6 audience/market research.
+- Full intake schema: `WebCreatorInput` in `packages/shared/src/types.ts` (stored in
+  `WebCreatorSpec.details` JSON + hot columns; migration `2_webcreator_goal_details`).
+- Module 2 has its own **rewritable goal** (`WebCreatorSpec.goal`), default
+  `DEFAULT_WEB_GOAL` (get the client to call/message/book). Passed to the agent as the
+  session goal via `SessionRegistry.start({ goalOverride })`.
+- Instruction builder: `buildWebCreatorInstructions(spec, playbookPath)` +
+  `formatWebBrief(spec)` in `apps/server/src/agent/prompts.ts`.
+
 ## Status — DONE
 
 - [x] Monorepo scaffold, shared types, Fastify + Vite skeletons, Prisma/Postgres.
@@ -76,6 +95,7 @@ Key files:
 - [x] GitHub Actions CI (typecheck · test · build) — green on PR #1.
 - [x] Initial Prisma migrations; Dockerfile for Railway.
 - [x] Vitest: AsyncInbox sequencing + secrets round-trip/tamper (6/6 pass).
+- [x] Web Creator: full skill intake form + playbook injection + rewritable Module 2 goal.
 
 ## Verification commands
 

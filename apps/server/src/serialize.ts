@@ -6,6 +6,7 @@ import type {
   SessionDTO,
   WebCreatorSpecDTO,
 } from "@foreman/shared";
+import { WebCreatorInput } from "@foreman/shared";
 import type {
   Goal,
   Instruction,
@@ -49,13 +50,20 @@ export function serializeSession(s: Session): SessionDTO {
 
 export function serializeWebSpec(w: WebCreatorSpec | null): WebCreatorSpecDTO | null {
   if (!w) return null;
-  return {
+  // `details` holds the full intake; columns are the authoritative overrides.
+  const details = (w.details ?? {}) as Record<string, unknown>;
+  const merged = {
+    ...details,
+    goal: w.goal,
     companyName: w.companyName,
     industry: w.industry,
     accentHex: w.accentHex,
     logoUrl: w.logoUrl,
     logoPrompt: w.logoPrompt,
   };
+  // safeParse fills defaults for any fields missing on older rows.
+  const parsed = WebCreatorInput.safeParse(merged);
+  return parsed.success ? parsed.data : (merged as WebCreatorSpecDTO);
 }
 
 type ProjectWithRelations = Project & {
