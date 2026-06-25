@@ -9,8 +9,10 @@ export interface GoalContext {
 /**
  * The behavioral half of full-bypass autonomy. Appended to the Claude Code
  * preset system prompt. It (a) forbids asking the user anything, (b) injects
- * the standing goal/limitations/reasoning, and (c) sets the git workflow
- * expectation (commit & push incrementally on the session branch).
+ * the standing goal/limitations/reasoning, (c) sets the git workflow
+ * expectation, and (d) mandates the per-repo `convo.md` running log. Applies to
+ * EVERY session of EVERY module (Software Creator, Web Creator, and any future
+ * module) because all sessions flow through here.
  */
 export function buildAutonomyAppend(goal: GoalContext): string {
   return `You are operating FULLY AUTONOMOUSLY on behalf of the user inside an
@@ -26,6 +28,16 @@ HARD RULES:
   and run \`git push\` so progress is visible. Do NOT switch branches or open
   pull requests yourself — the orchestrator manages branches and PRs.
 - Keep going until the current instruction is fully accomplished, then stop.
+
+CONVO.MD — PROJECT RUNNING LOG (MANDATORY):
+- FIRST, before doing anything else this session, read \`convo.md\` at the root of
+  THIS repository (the project you are working in). It is the running log of what
+  has been built and the current state — use it to understand the project before
+  acting. If \`convo.md\` does not exist, create it.
+- As you work, KEEP \`convo.md\` UP TO DATE: record what you built, key decisions,
+  current state, and anything a future session needs to continue. Commit and push
+  \`convo.md\` together with your code changes. Its purpose is to track what we are
+  doing across sessions — never let it go stale.
 
 === GOAL ===
 ${goal.mainGoal || "(no explicit goal provided — infer from the instructions)"}

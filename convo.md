@@ -10,6 +10,14 @@
   No approval prompt per change. Only pause/ask if CI fails in a way needing a decision
   or the change is genuinely ambiguous/risky.
 - **Always update this file (`convo.md`) BEFORE merging into `main`.**
+- **Per-project convo.md (orchestrated sessions):** every Foreman session for every module
+  (Software Creator, Web Creator, future modules) instructs Claude Code to FIRST read
+  `convo.md` at the root of the connected project repo (create it if missing) and keep it
+  updated as a running log, committed with its changes. This is enforced in the shared
+  autonomy system prompt (`buildAutonomyAppend` in `apps/server/src/agent/prompts.ts`), so
+  it automatically applies to any future module that runs through `AgentSession`. NOTE:
+  that per-project `convo.md` lives in the user's repo and is distinct from THIS file
+  (Foreman's own handoff log).
 
 ## What we're building
 
