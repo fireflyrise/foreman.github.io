@@ -1,10 +1,20 @@
+import { prisma } from "../db.js";
 import { loadCredential, saveCredential } from "./store.js";
 
 interface RailwayCredential {
   token: string;
+  /** Account-wide defaults, used when a Foreman project has none of its own. */
   projectId?: string;
   serviceId?: string;
   environmentId?: string;
+}
+
+/** The fully-resolved Railway target a query runs against. */
+interface RailwayTarget {
+  token: string;
+  projectId: string;
+  serviceId: string | null;
+  environmentId: string | null;
 }
 
 const RAILWAY_API = "https://backboard.railway.app/graphql/v2";
@@ -32,6 +42,41 @@ export async function getRailway(
   return loadCredential<RailwayCredential>(userId, "RAILWAY");
 }
 
+/**
+ * Resolve which Railway project/service/environment a query targets. The token
+ * is always the user's account-wide Railway token; the project/service/env IDs
+ * come from the Foreman project (Project.railway*) when set, otherwise fall back
+ * to the account-wide defaults stored on the credential.
+ */
+async function resolveTarget(
+  userId: string,
+  foremanProjectId?: string,
+): Promise<RailwayTarget> {
+  const cred = await getRailway(userId);
+  if (!cred) throw new Error("Railway is not connected.");
+
+  let projectId = cred.projectId ?? null;
+  let serviceId = cred.serviceId ?? null;
+  let environmentId = cred.environmentId ?? null;
+
+  if (foremanProjectId) {
+    const p = await prisma.project.findUnique({
+      where: { id: foremanProjectId },
+      select: { railwayProjectId: true, railwayServiceId: true, railwayEnvironmentId: true },
+    });
+    if (p?.railwayProjectId) projectId = p.railwayProjectId;
+    if (p?.railwayServiceId) serviceId = p.railwayServiceId;
+    if (p?.railwayEnvironmentId) environmentId = p.railwayEnvironmentId;
+  }
+
+  if (!projectId) {
+    throw new Error(
+      "No Railway project configured for this project. Set its Railway IDs, or account-wide defaults.",
+    );
+  }
+  return { token: cred.token, projectId, serviceId, environmentId };
+}
+
 async function railwayQuery<T>(
   token: string,
   query: string,
@@ -53,20 +98,19 @@ async function railwayQuery<T>(
   return json.data;
 }
 
-/** Find the most recent deployment for the configured service/environment. */
+/** Find the most recent deployment for the project's resolved service/environment. */
 export async function getLatestDeployment(
   userId: string,
+  foremanProjectId?: string,
 ): Promise<{ id: string; status: string } | null> {
-  const cred = await getRailway(userId);
-  if (!cred) throw new Error("Railway is not connected.");
-  if (!cred.projectId) throw new Error("Railway projectId is not configured.");
+  const target = await resolveTarget(userId, foremanProjectId);
 
   const data = await railwayQuery<{
     deployments: {
       edges: Array<{ node: { id: string; status: string } }>;
     };
   }>(
-    cred.token,
+    target.token,
     `query Deployments($projectId: String!, $serviceId: String, $environmentId: String) {
       deployments(
         first: 1
@@ -76,9 +120,9 @@ export async function getLatestDeployment(
       }
     }`,
     {
-      projectId: cred.projectId,
-      serviceId: cred.serviceId ?? null,
-      environmentId: cred.environmentId ?? null,
+      projectId: target.projectId,
+      serviceId: target.serviceId,
+      environmentId: target.environmentId,
     },
   );
   const node = data.deployments.edges[0]?.node;
@@ -134,16 +178,20 @@ export async function fetchBuildLogs(
 }
 
 /**
- * Convenience: pull the latest deployment and return its build + runtime logs,
- * flagged if the deployment is in a failed state.
+ * Pull the latest deployment for a specific Foreman project and return its
+ * build + runtime logs, flagged if the deployment is in a failed state.
+ * Pass `foremanProjectId` so the right Railway service/environment is targeted.
  */
-export async function fetchLatestLogs(userId: string): Promise<{
+export async function fetchLatestLogs(
+  userId: string,
+  foremanProjectId?: string,
+): Promise<{
   deploymentId: string | null;
   status: string | null;
   failed: boolean;
   logs: RailwayLogLine[];
 }> {
-  const deployment = await getLatestDeployment(userId);
+  const deployment = await getLatestDeployment(userId, foremanProjectId);
   if (!deployment) {
     return { deploymentId: null, status: null, failed: false, logs: [] };
   }

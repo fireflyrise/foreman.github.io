@@ -6,6 +6,7 @@ import { GoalEditor } from "./GoalEditor.js";
 import { InstructionList } from "./InstructionList.js";
 import { AgentConsole } from "./AgentConsole.js";
 import { WebCreatorForm } from "./WebCreatorForm.js";
+import { RailwayTargetDialog } from "./RailwayTargetDialog.js";
 import { Button } from "./ui.js";
 
 type Module = "software" | "web";
@@ -13,6 +14,8 @@ type Module = "software" | "web";
 export function ProjectView({ project }: { project: ProjectDTO }) {
   const qc = useQueryClient();
   const [module, setModule] = useState<Module>("software");
+  const [showRailway, setShowRailway] = useState(false);
+  const railwaySet = Boolean(project.railwayProjectId);
 
   async function changeAuthMode(authMode: "subscription" | "api") {
     await api.setAuthMode(project.id, authMode);
@@ -59,6 +62,13 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
           </label>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => setShowRailway(true)}
+            title="Set this project's Railway project/service/environment so its deploy logs can be pulled"
+          >
+            🚆 Railway{railwaySet ? " ✓" : ""}
+          </Button>
           <div className="flex rounded-md border border-edge p-0.5">
             <button
               onClick={() => setModule("software")}
@@ -98,6 +108,10 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
             <AgentConsole project={project} />
           </div>
         </div>
+      )}
+
+      {showRailway && (
+        <RailwayTargetDialog project={project} onClose={() => setShowRailway(false)} />
       )}
     </div>
   );
