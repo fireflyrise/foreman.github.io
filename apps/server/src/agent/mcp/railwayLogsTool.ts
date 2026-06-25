@@ -7,14 +7,14 @@ import { fetchLatestLogs } from "../../integrations/railway.js";
  * the latest Railway build/runtime logs on demand (e.g. to debug a failed
  * deploy). Bound to a specific user's stored Railway credentials.
  */
-export function createRailwayMcpServer(userId: string) {
+export function createRailwayMcpServer(userId: string, foremanProjectId: string) {
   return createSdkMcpServer({
     name: "railway",
     version: "1.0.0",
     tools: [
       tool(
         "fetch_railway_logs",
-        "Fetch the latest Railway deployment status and build/runtime logs for this project. Use this to diagnose deployment or runtime errors.",
+        "Fetch the latest Railway deployment status and build/runtime logs for THIS project's Railway service. Use this to diagnose deployment or runtime errors.",
         {
           limit: z
             .number()
@@ -26,7 +26,10 @@ export function createRailwayMcpServer(userId: string) {
         },
         async () => {
           try {
-            const { deploymentId, status, failed, logs } = await fetchLatestLogs(userId);
+            const { deploymentId, status, failed, logs } = await fetchLatestLogs(
+              userId,
+              foremanProjectId,
+            );
             if (!deploymentId) {
               return {
                 content: [

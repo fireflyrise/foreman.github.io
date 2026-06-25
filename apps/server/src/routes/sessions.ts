@@ -127,7 +127,7 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     async (req, reply) => {
       const { id } = req.params as { id: string };
       try {
-        const { status, failed, logs } = await fetchLatestLogs(getUserId(req));
+        const { status, failed, logs } = await fetchLatestLogs(getUserId(req), id);
         const live = SessionRegistry.get(id);
         if (failed && live && SessionRegistry.isRunning(id)) {
           const body = logs.map((l) => `${l.severity ?? "info"}: ${l.message}`).join("\n");

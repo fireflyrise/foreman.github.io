@@ -81,6 +81,14 @@ export const api = {
     req<{ project: ProjectDTO }>("PATCH", `/api/projects/${id}`, { name }),
   setAuthMode: (id: string, authMode: "subscription" | "api") =>
     req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/auth-mode`, { authMode }),
+  setProjectRailway: (
+    id: string,
+    input: {
+      railwayProjectId: string | null;
+      railwayServiceId: string | null;
+      railwayEnvironmentId: string | null;
+    },
+  ) => req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/railway`, input),
   deleteProject: (id: string) =>
     req<{ ok: boolean }>("DELETE", `/api/projects/${id}`),
 

@@ -134,6 +134,11 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
 - [x] AES-256-GCM secrets, single-user login gate.
 - [x] GitHub OAuth + repo listing + backend PR/merge; RepoManager clone/branch.
 - [x] Railway GraphQL logs (REST + MCP tool + failure self-heal injection).
+- [x] Per-project Railway targeting: token is account-wide; project/service/environment IDs
+      resolve per Foreman project (`Project.railway*` via 🚆 dialog + `PUT /projects/:id/railway`,
+      account-wide fallback). `resolveTarget()` in `integrations/railway.ts`; `fetchLatestLogs`,
+      the `railwayLogsTool` MCP tool, and `/railway/refresh` all pass the Foreman projectId, so
+      each session pulls logs for ITS OWN Railway service.
 - [x] Gemini "nano banana" logo generation (REST + MCP tool).
 - [x] Agent engine + Module 1 (goal editor, drag-reorderable instructions, SSE console).
 - [x] Module 2 (web-creator form, logo upload/generate) reusing the engine.

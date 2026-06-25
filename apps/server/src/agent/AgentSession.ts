@@ -170,7 +170,7 @@ export class AgentSession {
         append: buildAutonomyAppend(this.goal),
       },
       mcpServers: {
-        railway: createRailwayMcpServer(this.userId),
+        railway: createRailwayMcpServer(this.userId, this.projectId),
         logo: createLogoMcpServer(this.userId),
       },
       canUseTool: async () => ({ behavior: "allow" as const, updatedInput: {} }),

@@ -263,3 +263,11 @@ export const SetAuthModeInput = z.object({
   authMode: AuthMode,
 });
 export type SetAuthModeInput = z.infer<typeof SetAuthModeInput>;
+
+/** Per-project Railway target (overrides the account-wide defaults). */
+export const SetProjectRailwayInput = z.object({
+  railwayProjectId: z.string().nullable().optional(),
+  railwayServiceId: z.string().nullable().optional(),
+  railwayEnvironmentId: z.string().nullable().optional(),
+});
+export type SetProjectRailwayInput = z.infer<typeof SetProjectRailwayInput>;
