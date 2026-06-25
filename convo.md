@@ -1,7 +1,15 @@
-# Convo.md — Foreman build state & handoff
+# convo.md — Foreman build state & handoff
 
 > Living progress log so work can continue from any new branch. Read this first.
 > Last updated: 2026-06-25.
+
+## Standing workflow rules (the user set these)
+
+- **Auto-merge:** for every change, push → open a non-draft PR → wait for CI green →
+  merge into `main` automatically (squash), then reset the working branch onto `main`.
+  No approval prompt per change. Only pause/ask if CI fails in a way needing a decision
+  or the change is genuinely ambiguous/risky.
+- **Always update this file (`convo.md`) BEFORE merging into `main`.**
 
 ## What we're building
 
@@ -20,10 +28,11 @@ Full design lives in `README.md` and the approved plan at
 ## Repo / branch / PR
 
 - Repo: `fireflyrise/foreman.github.io` (was empty; this is a from-scratch build).
-- Working branch: `claude/sweet-heisenberg-yeek0y`.
+- Working branch: `claude/sweet-heisenberg-yeek0y` (reset onto `main` after each merge).
 - An empty `main` baseline commit was created so the PR diff shows the whole project.
-- **PR #1**: MERGED into `main` (initial full scaffold). CI green.
-- Follow-up work (Web Creator overhaul) continues on the same branch toward a new PR.
+- **PR #1**: MERGED — initial full scaffold.
+- **PR #2**: MERGED — Web Creator full skill intake + playbook + Module 2 goal.
+- `main` is the source of truth; everything above is merged into it.
 
 ## Architecture (TypeScript monorepo: pnpm + Turborepo)
 
