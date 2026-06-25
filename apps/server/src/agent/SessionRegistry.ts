@@ -1,3 +1,4 @@
+import type { AuthMode } from "@foreman/shared";
 import type { GoalContext } from "./prompts.js";
 import { AgentSession } from "./AgentSession.js";
 import { env } from "../env.js";
@@ -6,6 +7,8 @@ import { prisma } from "../db.js";
 interface StartParams {
   projectId: string;
   userId: string;
+  /** Defaults to "subscription" (Module 1); Web Creator passes "api". */
+  authMode?: AuthMode;
 }
 
 /**
@@ -32,7 +35,7 @@ class SessionRegistryImpl {
     return n;
   }
 
-  async start({ projectId, userId }: StartParams): Promise<AgentSession> {
+  async start({ projectId, userId, authMode = "subscription" }: StartParams): Promise<AgentSession> {
     const existing = this.sessions.get(projectId);
     if (existing && this.isRunning(projectId)) {
       throw new Error("A session is already running for this project.");
@@ -69,6 +72,7 @@ class SessionRegistryImpl {
       mergePolicy: project.mergePolicy,
       goal,
       instructions: pending.map((i) => ({ id: i.id, text: i.text })),
+      authMode,
     });
 
     this.sessions.set(projectId, session);
@@ -79,6 +83,11 @@ class SessionRegistryImpl {
   async stop(projectId: string): Promise<void> {
     const session = this.sessions.get(projectId);
     if (session) await session.stop();
+  }
+
+  async resolveLimit(projectId: string, choice: "api" | "wait"): Promise<void> {
+    const session = this.sessions.get(projectId);
+    if (session) await session.resolveLimit(choice);
   }
 }
 

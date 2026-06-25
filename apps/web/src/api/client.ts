@@ -112,6 +112,8 @@ export const api = {
     req<{ ok: boolean }>("POST", `/api/projects/${id}/session/start`),
   stopSession: (id: string) =>
     req<{ ok: boolean }>("POST", `/api/projects/${id}/session/stop`),
+  resolveLimit: (id: string, choice: "api" | "wait") =>
+    req<{ ok: boolean }>("POST", `/api/projects/${id}/session/resolve-limit`, { choice }),
   refreshRailway: (id: string) =>
     req<{ ok: boolean; injected: boolean; status: string | null }>(
       "POST",

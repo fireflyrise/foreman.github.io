@@ -13,15 +13,28 @@ const LABELS: Record<string, string> = {
 
 function Chip({ s }: { s: IntegrationStatusDTO }) {
   const login = typeof s.meta.login === "string" ? ` (${s.meta.login})` : "";
+  let suffix = login;
+  if (s.provider === "ANTHROPIC") {
+    const parts: string[] = [];
+    if (s.meta.subscription) parts.push("Max");
+    if (s.meta.apiKey) parts.push("API");
+    if (parts.length) suffix = ` (${parts.join("+")})`;
+  }
+  const title =
+    s.provider === "ANTHROPIC"
+      ? "Max = Software Creator (subscription); API = Web Creator (API key)"
+      : s.connected
+        ? "Connected"
+        : "Not connected";
   return (
     <span
       className={`rounded-full px-2 py-0.5 text-[11px] ${
         s.connected ? "bg-green-600/20 text-green-300" : "bg-edge text-gray-400"
       }`}
-      title={s.connected ? "Connected" : "Not connected"}
+      title={title}
     >
       {s.connected ? "●" : "○"} {LABELS[s.provider] ?? s.provider}
-      {login}
+      {suffix}
     </span>
   );
 }

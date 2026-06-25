@@ -18,6 +18,8 @@ const TYPES: AgentEvent["type"][] = [
   "log",
   "result",
   "git",
+  "auth_mode",
+  "limit_reached",
 ];
 
 function render(event: AgentEvent): string | null {
@@ -42,6 +44,10 @@ function render(event: AgentEvent): string | null {
       return `— session: ${event.status} —`;
     case "instruction_status":
       return `instruction ${event.instructionId.slice(0, 6)} → ${event.status}`;
+    case "auth_mode":
+      return `🔑 auth: ${event.mode === "subscription" ? "Max subscription" : "API key"}`;
+    case "limit_reached":
+      return `⛔ ${event.detail}`;
     default:
       return null;
   }

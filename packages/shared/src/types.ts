@@ -30,6 +30,7 @@ export const SessionStatus = z.enum([
   "idle", // session open, no instruction currently running
   "running", // an instruction is executing
   "awaiting_next", // finished one, about to send the next
+  "limit_paused", // subscription limit hit; awaiting user choice
   "stopped",
   "error",
   "completed", // queue drained successfully
@@ -179,3 +180,8 @@ export const LoginInput = z.object({
   password: z.string().min(1),
 });
 export type LoginInput = z.infer<typeof LoginInput>;
+
+export const ResolveLimitInput = z.object({
+  choice: z.enum(["api", "wait"]),
+});
+export type ResolveLimitInput = z.infer<typeof ResolveLimitInput>;

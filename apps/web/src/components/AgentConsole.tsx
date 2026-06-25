@@ -29,7 +29,11 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [lines]);
 
-  const running = status === "running" || status === "awaiting_next" || status === "idle";
+  const running =
+    status === "running" ||
+    status === "awaiting_next" ||
+    status === "idle" ||
+    status === "limit_paused";
 
   async function start() {
     setError(null);
@@ -44,6 +48,12 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
 
   async function stop() {
     await api.stopSession(project.id);
+    void qc.invalidateQueries({ queryKey: ["projects"] });
+  }
+
+  async function resolveLimit(choice: "api" | "wait") {
+    await api.resolveLimit(project.id, choice);
+    if (choice === "api") setNonce((n) => n + 1);
     void qc.invalidateQueries({ queryKey: ["projects"] });
   }
 
@@ -90,6 +100,20 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
       </div>
 
       {error && <p className="mb-2 text-[11px] text-amber-300">{error}</p>}
+
+      {status === "limit_paused" && (
+        <div className="mb-2 flex items-center justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+          <span className="text-xs text-amber-200">
+            Max plan limit reached. Continue this work on the API key, or wait for the reset?
+          </span>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="subtle" onClick={() => resolveLimit("wait")}>
+              Wait
+            </Button>
+            <Button onClick={() => resolveLimit("api")}>Continue on API key</Button>
+          </div>
+        </div>
+      )}
 
       <div
         ref={scrollRef}

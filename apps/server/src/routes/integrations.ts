@@ -20,11 +20,15 @@ export async function integrationRoutes(app: FastifyInstance): Promise<void> {
       const meta = (await getMeta(userId, provider)) ?? {};
       statuses.push({ provider, connected, meta });
     }
-    // Anthropic key is a server env var, not stored per-user.
+    // Anthropic auth is server-side env. Report both credential paths:
+    // API key (Module 2 / client work) and Max subscription token (Module 1).
     statuses.push({
       provider: "ANTHROPIC",
-      connected: Boolean(env.anthropicApiKey),
-      meta: {},
+      connected: Boolean(env.anthropicApiKey) || Boolean(env.claudeCodeOauthToken),
+      meta: {
+        apiKey: Boolean(env.anthropicApiKey),
+        subscription: Boolean(env.claudeCodeOauthToken),
+      },
     });
     return { integrations: statuses };
   });

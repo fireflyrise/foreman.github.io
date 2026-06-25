@@ -45,6 +45,9 @@ export const env = {
   databaseUrl: optional("DATABASE_URL"),
 
   anthropicApiKey: optional("ANTHROPIC_API_KEY"),
+  // Long-lived OAuth token from `claude setup-token` (Max/Pro). Used for
+  // Module 1 (Software Creator) so work bills against the subscription.
+  claudeCodeOauthToken: optional("CLAUDE_CODE_OAUTH_TOKEN"),
   agentModel: optional("AGENT_MODEL", "claude-opus-4-8"),
   maxConcurrentSessions: int("MAX_CONCURRENT_SESSIONS", 3),
   sessionCostLimitUsd: num("SESSION_COST_LIMIT_USD", 10),

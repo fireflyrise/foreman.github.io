@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { AgentEvent, WebCreatorInput as WebCreatorInputType } from "@foreman/shared";
-import { WebCreatorInput } from "@foreman/shared";
+import { ResolveLimitInput, WebCreatorInput } from "@foreman/shared";
 import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
@@ -87,11 +87,29 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       }
 
       try {
-        const session = await SessionRegistry.start({ projectId: id, userId: getUserId(req) });
+        // Web Creator is client work → bill the Anthropic API key, not the subscription.
+        const session = await SessionRegistry.start({
+          projectId: id,
+          userId: getUserId(req),
+          authMode: "api",
+        });
         return { ok: true, session: session.snapshot() };
       } catch (err) {
         return reply.code(400).send({ error: (err as Error).message });
       }
+    },
+  );
+
+  // Resolve a Max usage-limit pause: continue on API key, or wait for reset.
+  app.post(
+    "/api/projects/:id/session/resolve-limit",
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const parsed = ResolveLimitInput.safeParse(req.body);
+      if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
+      const { id } = req.params as { id: string };
+      await SessionRegistry.resolveLimit(id, parsed.data.choice);
+      return reply.send({ ok: true });
     },
   );
 

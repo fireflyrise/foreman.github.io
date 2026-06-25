@@ -32,6 +32,16 @@ export type AgentEvent =
       instructionId: string | null;
     }
   | { type: "git"; action: string; detail: string }
+  | { type: "auth_mode"; mode: "subscription" | "api" }
+  | {
+      // Emitted when a subscription session hits the Max usage limit and is
+      // paused awaiting the user's choice (continue on API key, or wait).
+      type: "limit_reached";
+      detail: string;
+    }
   | { type: "heartbeat" };
+
+/** Auth mode for an orchestrated session. */
+export type AuthMode = "subscription" | "api";
 
 export type AgentEventType = AgentEvent["type"];

@@ -1,5 +1,5 @@
 import { query, type Query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { AgentEvent, SessionStatus } from "@foreman/shared";
+import type { AgentEvent, AuthMode, SessionStatus } from "@foreman/shared";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { RepoManager } from "../git/RepoManager.js";
@@ -28,9 +28,18 @@ interface StartArgs {
   mergePolicy: string;
   goal: GoalContext;
   instructions: Array<{ id: string; text: string }>;
+  /** "subscription" → Max plan (CLAUDE_CODE_OAUTH_TOKEN); "api" → ANTHROPIC_API_KEY. */
+  authMode: AuthMode;
 }
 
 type Subscriber = (e: AgentEvent) => void;
+
+/** Heuristic: does this error result look like a subscription usage/rate limit? */
+function isUsageLimit(msg: Record<string, unknown>): boolean {
+  if (Number(msg.api_error_status) === 429) return true;
+  const text = `${msg.result ?? ""} ${msg.stop_reason ?? ""}`.toLowerCase();
+  return /usage limit|rate limit|limit reached|quota|too many requests|429/.test(text);
+}
 
 /**
  * Owns one long-lived Claude Agent SDK session for a single project. Feeds the
@@ -44,6 +53,11 @@ export class AgentSession {
   private readonly repo: RepoManager;
   private readonly mergePolicy: string;
   private readonly goal: GoalContext;
+  private readonly authMode: AuthMode;
+  /** Set when a subscription session has been told to fall back to the API key. */
+  private apiKeyOverride = false;
+  /** Holds the instruction that hit the limit, so we can retry it on resume. */
+  private limitedInstruction: QueuedInstruction | null = null;
 
   private inbox = new AsyncInbox<SDKUserMessage>();
   private q: Query | null = null;
@@ -68,6 +82,7 @@ export class AgentSession {
     this.userId = args.userId;
     this.mergePolicy = args.mergePolicy;
     this.goal = args.goal;
+    this.authMode = args.authMode;
     this.queue = args.instructions.map((i) => ({ id: i.id, text: i.text }));
     this.total = this.queue.length;
     this.repo = new RepoManager(
@@ -157,13 +172,33 @@ export class AgentSession {
         logo: createLogoMcpServer(this.userId),
       },
       canUseTool: async () => ({ behavior: "allow" as const, updatedInput: {} }),
-      env: { ...process.env, ANTHROPIC_API_KEY: env.anthropicApiKey } as Record<string, string | undefined>,
+      env: this.buildAuthEnv(),
     };
+  }
+
+  /**
+   * Build the subprocess env with exactly one credential set. The two are
+   * mutually exclusive — if ANTHROPIC_API_KEY is present it overrides the
+   * subscription token — so we null out the one we are not using.
+   */
+  private buildAuthEnv(): Record<string, string | undefined> {
+    const useApi = this.authMode === "api" || this.apiKeyOverride;
+    return {
+      ...process.env,
+      ANTHROPIC_API_KEY: useApi ? env.anthropicApiKey : undefined,
+      CLAUDE_CODE_OAUTH_TOKEN: useApi ? undefined : env.claudeCodeOauthToken,
+    };
+  }
+
+  /** The credential mode actually in effect right now. */
+  private effectiveMode(): AuthMode {
+    return this.authMode === "api" || this.apiKeyOverride ? "api" : "subscription";
   }
 
   private startConsumeLoop(): void {
     const options = this.buildOptions();
     this.q = query({ prompt: this.inbox, options });
+    this.emit({ type: "auth_mode", mode: this.effectiveMode() });
     void this.consume();
   }
 
@@ -262,6 +297,29 @@ export class AgentSession {
       numTurns,
       instructionId: instr?.id ?? null,
     });
+
+    // Subscription usage-limit hit → pause and ask the user (notify & choose).
+    if (
+      subtype !== "success" &&
+      this.effectiveMode() === "subscription" &&
+      isUsageLimit(msg)
+    ) {
+      this.limitedInstruction = instr;
+      this.currentInstruction = null;
+      if (instr?.id) {
+        await prisma.instruction
+          .update({ where: { id: instr.id }, data: { status: "pending" } })
+          .catch(() => undefined);
+        this.emit({ type: "instruction_status", instructionId: instr.id, status: "pending" });
+      }
+      this.setStatus("limit_paused");
+      this.emit({
+        type: "limit_reached",
+        detail:
+          "Your Max plan usage limit was reached. Continue this work on the API key, or wait for the limit to reset.",
+      });
+      return;
+    }
 
     // Mark the just-finished instruction done.
     if (instr?.id) {
@@ -385,6 +443,38 @@ export class AgentSession {
   /** Inject a Railway-failure fix instruction. */
   injectRailwayFix(status: string, logs: string): void {
     this.enqueue(buildRailwayFixMessage(status, logs), null);
+  }
+
+  /**
+   * Resolve a subscription usage-limit pause. "api" tears down the subscription
+   * query and resumes the interrupted instruction on the API key; "wait" stops
+   * the session so it can be re-run later (on the subscription) after a reset.
+   */
+  async resolveLimit(choice: "api" | "wait"): Promise<void> {
+    if (this.status !== "limit_paused") return;
+
+    if (choice === "wait") {
+      this.emit({ type: "log", level: "info", text: "Waiting for the Max limit to reset. Re-run when ready." });
+      await this.stop();
+      return;
+    }
+
+    // Switch to API-key auth: rebuild the SDK query with a fresh environment.
+    this.apiKeyOverride = true;
+    this.emit({ type: "log", level: "warn", text: "Continuing on the API key (pay-as-you-go)." });
+    try {
+      this.inbox.end();
+      await this.q?.return?.(undefined);
+    } catch {
+      /* ignore */
+    }
+    this.inbox = new AsyncInbox<SDKUserMessage>();
+    this.startConsumeLoop();
+
+    const retry = this.limitedInstruction;
+    this.limitedInstruction = null;
+    if (retry) this.queue.unshift(retry);
+    this.sendNext();
   }
 
   async stop(): Promise<void> {
