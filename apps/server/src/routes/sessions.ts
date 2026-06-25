@@ -3,8 +3,10 @@ import type { AgentEvent, WebCreatorInput as WebCreatorInputType } from "@forema
 import { ResolveLimitInput, WebCreatorInput } from "@foreman/shared";
 import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
+import { saveWebSpec } from "../webspec.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
 import { buildWebCreatorInstructions } from "../agent/prompts.js";
+import { writePlaybookForProject } from "../agent/webCreatorPlaybook.js";
 import { fetchLatestLogs } from "../integrations/railway.js";
 
 export async function sessionRoutes(app: FastifyInstance): Promise<void> {
@@ -54,33 +56,13 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       if (!project) return reply.code(404).send({ error: "Not found" });
 
       const spec = parsed.data as WebCreatorInputType;
-      await prisma.webCreatorSpec.upsert({
-        where: { projectId: id },
-        create: {
-          projectId: id,
-          companyName: spec.companyName,
-          industry: spec.industry,
-          accentHex: spec.accentHex,
-          logoUrl: spec.logoUrl ?? null,
-          logoPrompt: spec.logoPrompt ?? null,
-        },
-        update: {
-          companyName: spec.companyName,
-          industry: spec.industry,
-          accentHex: spec.accentHex,
-          logoUrl: spec.logoUrl ?? null,
-          logoPrompt: spec.logoPrompt ?? null,
-        },
-      });
+      await saveWebSpec(id, spec);
+
+      // Drop the full playbook where the agent can read it (outside the repo).
+      const playbookPath = writePlaybookForProject(id);
 
       // Seed instruction list with the website build steps.
-      const steps = buildWebCreatorInstructions({
-        companyName: spec.companyName,
-        industry: spec.industry,
-        accentHex: spec.accentHex,
-        logoUrl: spec.logoUrl ?? null,
-        extraNotes: spec.extraNotes,
-      });
+      const steps = buildWebCreatorInstructions(spec, playbookPath);
       const max = await prisma.instruction.aggregate({
         where: { projectId: id },
         _max: { order: true },
@@ -96,6 +78,13 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
           projectId: id,
           userId: getUserId(req),
           authMode: "api",
+          goalOverride: {
+            mainGoal: spec.goal,
+            limitations:
+              "No specific pricing anywhere on the site. Email is never shown except on Privacy/Terms. Follow every rule in the WebCreator playbook.",
+            reasoning:
+              "Follow the WebCreator playbook exactly (read it first). The client interview is already complete — all answers are in the seeded instructions; never re-interview.",
+          },
         });
         return { ok: true, session: session.snapshot() };
       } catch (err) {

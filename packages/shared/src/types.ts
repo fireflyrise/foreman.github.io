@@ -87,13 +87,8 @@ export interface SessionDTO {
   endedAt: string | null;
 }
 
-export interface WebCreatorSpecDTO {
-  companyName: string;
-  industry: string;
-  accentHex: string;
-  logoUrl: string | null;
-  logoPrompt: string | null;
-}
+// The full Web Creator spec returned to the UI mirrors the intake input.
+export type WebCreatorSpecDTO = WebCreatorInput;
 
 export interface IntegrationStatusDTO {
   provider: IntegrationProvider;
@@ -168,15 +163,88 @@ export const GenerateLogoInput = z.object({
 });
 export type GenerateLogoInput = z.infer<typeof GenerateLogoInput>;
 
+/** Default conversion goal for a Web Creator site (rewritable per project). */
+export const DEFAULT_WEB_GOAL =
+  "Convert visitors into leads: get the client to call us, send us a message, or book an appointment. Every page, headline, and CTA funnels toward that single action.";
+
+const hex = z.string().regex(/^#([0-9a-fA-F]{6})$/, "Must be a #RRGGBB hex color");
+
+export const ReviewInput = z.object({
+  name: z.string().default(""),
+  city: z.string().default(""),
+  text: z.string().default(""),
+});
+export type ReviewInput = z.infer<typeof ReviewInput>;
+
+export const FaqInput = z.object({
+  question: z.string().default(""),
+  answer: z.string().default(""),
+});
+export type FaqInput = z.infer<typeof FaqInput>;
+
+/**
+ * Full Web Creator intake — mirrors the WebCreator skill's guided interview
+ * (Rounds 1–6) so the orchestrator has everything it needs to build the site
+ * without re-interviewing the client.
+ */
 export const WebCreatorInput = z.object({
+  // Conversion goal (Module 2 equivalent of the Module 1 goal).
+  goal: z.string().default(DEFAULT_WEB_GOAL),
+
+  // ── Round 1: Business identity ──
   companyName: z.string().min(1),
   industry: z.string().min(1),
-  accentHex: z
-    .string()
-    .regex(/^#([0-9a-fA-F]{6})$/, "Must be a #RRGGBB hex color"),
+  businessType: z.enum(["local", "national"]).default("local"),
+  city: z.string().default(""),
+  state: z.string().default(""),
+  businessAddress: z.string().default(""),
+  phone: z.string().default(""),
+  email: z.string().default(""),
+  googleMapsEmbed: z.string().default(""),
+  domain: z.string().default(""),
+
+  // ── Round 2: Services ──
+  mainService: z.string().default(""),
+  services: z.array(z.string()).default([]),
+  locationInFilenames: z.boolean().default(true),
+
+  // ── Round 3: Branding ──
+  accentHex: hex, // COLOR_PRIMARY
+  colorHover: hex.optional(),
   logoUrl: z.string().nullable().optional(),
   logoPrompt: z.string().nullable().optional(),
-  extraNotes: z.string().optional(),
+  faviconLightUrl: z.string().nullable().optional(),
+  faviconDarkUrl: z.string().nullable().optional(),
+  tagline: z.string().default(""),
+  fontHeading: z.string().default("Montserrat"),
+  fontBody: z.string().default("Open Sans"),
+
+  // ── Round 4: Features ──
+  bookingEnabled: z.boolean().default(false),
+  bookingEmbed: z.string().default(""),
+  bilingual: z.boolean().default(false),
+  spanishRegion: z.string().default(""),
+  modalWebhookUrl: z.string().default(""),
+
+  // ── Round 5: Social proof & extras ──
+  reviewsSource: z.enum(["client", "generated"]).default("generated"),
+  reviews: z.array(ReviewInput).default([]),
+  heroImageUrl: z.string().nullable().optional(),
+  faqs: z.array(FaqInput).default([]),
+  ogImageSource: z.enum(["client", "generated"]).default("generated"),
+  ogImageUrl: z.string().nullable().optional(),
+
+  // ── Round 6: Audience & market research ──
+  idealCustomer: z.string().default(""),
+  painPoints: z.string().default(""),
+  fearsObjections: z.string().default(""),
+  dreamOutcome: z.string().default(""),
+  proof: z.string().default(""),
+  edge: z.string().default(""),
+  offer: z.string().default(""),
+  urgency: z.string().default(""),
+
+  extraNotes: z.string().default(""),
 });
 export type WebCreatorInput = z.infer<typeof WebCreatorInput>;
 

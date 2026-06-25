@@ -1,3 +1,5 @@
+import type { WebCreatorInput } from "@foreman/shared";
+
 export interface GoalContext {
   mainGoal: string;
   limitations: string;
@@ -50,21 +52,106 @@ export function buildRailwayFixMessage(status: string, logs: string): string {
   return `The latest Railway deployment is in state "${status}". Here are the most recent build/runtime logs:\n\n${logs}\n\nDiagnose the root cause and fix it in the codebase. Commit and push the fix, then stop.`;
 }
 
-/** Seed instructions for Module 2 (Web Creator). */
-export function buildWebCreatorInstructions(spec: {
-  companyName: string;
-  industry: string;
-  accentHex: string;
-  logoUrl: string | null;
-  extraNotes?: string;
-}): string[] {
-  const logoLine = spec.logoUrl
-    ? `A logo is available at: ${spec.logoUrl}. Download it into the project's assets and use it in the header/footer.`
-    : `No logo was provided; create a tasteful text-based wordmark for "${spec.companyName}".`;
+function line(label: string, value: unknown): string {
+  if (value === undefined || value === null || value === "") return "";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "";
+    return `- ${label}:\n${value
+      .map((v) =>
+        typeof v === "object" && v !== null
+          ? `    • ${Object.values(v).filter(Boolean).join(" — ")}`
+          : `    • ${String(v)}`,
+      )
+      .join("\n")}`;
+  }
+  return `- ${label}: ${String(value)}`;
+}
+
+/** Format the full client intake into a readable brief for the agent. */
+export function formatWebBrief(s: WebCreatorInput): string {
+  const cityState = [s.city, s.state].filter(Boolean).join(", ");
+  return [
+    "=== CLIENT BRIEF (interview already complete — do NOT re-interview) ===",
+    "",
+    "# Business identity",
+    line("Business name", s.companyName),
+    line("Industry", s.industry),
+    line("Scope", s.businessType === "national" ? "National (no location suffix in copy/H1)" : "Local"),
+    line("City/State", cityState),
+    line("Address", s.businessAddress),
+    line("Phone", s.phone),
+    line("Email", s.email),
+    line("Google Maps embed", s.googleMapsEmbed),
+    line("Domain", s.domain),
+    "",
+    "# Services",
+    line("Main service (homepage theme)", s.mainService),
+    line("Service pages to build", s.services),
+    line("Add location to service page filenames/titles", s.locationInFilenames ? "yes" : "no"),
+    "",
+    "# Branding",
+    line("Primary color", s.accentHex),
+    line("Hover color", s.colorHover),
+    line("Logo", s.logoUrl ?? undefined),
+    line("Favicon (light theme)", s.faviconLightUrl ?? undefined),
+    line("Favicon (dark theme)", s.faviconDarkUrl ?? undefined),
+    line("Tagline", s.tagline),
+    line("Heading font", s.fontHeading),
+    line("Body font", s.fontBody),
+    "",
+    "# Features",
+    line("Appointment booking", s.bookingEnabled ? "yes" : "no"),
+    line("Booking embed", s.bookingEmbed),
+    line("Bilingual (Spanish)", s.bilingual ? "yes" : "no"),
+    line("Spanish region/variety", s.spanishRegion),
+    line("Lead-capture modal webhook (Pabbly)", s.modalWebhookUrl),
+    "",
+    "# Social proof & extras",
+    line("Reviews source", s.reviewsSource),
+    line("Reviews", s.reviews),
+    line("Hero image", s.heroImageUrl ?? undefined),
+    line("FAQs", s.faqs),
+    line("OG image source", s.ogImageSource),
+    line("OG image", s.ogImageUrl ?? undefined),
+    "",
+    "# Audience & market research (use this to drive all copy)",
+    line("Ideal customer", s.idealCustomer),
+    line("Pain points", s.painPoints),
+    line("Fears / objections", s.fearsObjections),
+    line("Dream outcome", s.dreamOutcome),
+    line("Proof (experience, license, guarantee)", s.proof),
+    line("Edge over competitors", s.edge),
+    line("Offer (pricing informs positioning only — never quote numbers)", s.offer),
+    line("Urgency", s.urgency),
+    "",
+    line("Extra notes", s.extraNotes),
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+}
+
+/**
+ * Seed instructions for Module 2 (Web Creator). The first instruction loads the
+ * full WebCreator playbook (the complete methodology) and the client brief; the
+ * rest drive the build in the playbook's order. The agent must follow the
+ * playbook exactly and never re-interview the client.
+ */
+export function buildWebCreatorInstructions(
+  spec: WebCreatorInput,
+  playbookPath: string,
+): string[] {
+  const brief = formatWebBrief(spec);
+  const spanishStep = spec.bilingual
+    ? `Then build the Spanish version of the entire site per the playbook's bilingual rules (${spec.spanishRegion || "neutral Spanish"}): Spanish homepage in its own slug folder, Spanish service pages, política de privacidad, términos y condiciones, and the nav language toggle with correct hreflang/canonical tags. Commit and push.`
+    : "";
 
   return [
-    `Scaffold a modern, responsive marketing website for "${spec.companyName}", a company in the ${spec.industry} industry. Choose an appropriate, well-supported stack (e.g. Vite + React + Tailwind, or Next.js) and set up the project structure with a working dev build. Use ${spec.accentHex} as the primary accent color throughout the design system. ${logoLine} ${spec.extraNotes ?? ""}`.trim(),
-    `Build the core pages: a hero/landing section, an about section, a services/features section tailored to the ${spec.industry} industry, and a contact section. Ensure the design is polished, accessible, and mobile-responsive, consistently using the ${spec.accentHex} accent.`,
-    `Add finishing touches: SEO meta tags, a favicon derived from the brand, smooth section navigation, and a footer. Verify the site builds successfully and fix any errors.`,
+    `Read the WebCreator playbook in full — it is a Markdown file at: ${playbookPath}. It is your complete, authoritative methodology for building this website (copywriting voice, fixed 10-section layout, clean URL structure, no-pricing rule, contact-display rules, H1 rule, SEO/schema, modal popup, deployment). The guided client interview it describes is ALREADY COMPLETE — do NOT ask any questions and do NOT re-interview. Use the brief below as the answers.\n\n${brief}\n\nNow begin: set up the project structure exactly as the playbook specifies (css/, js/, images/, root index.html, clean folder URLs), build the design system from the brand colors and fonts (full :root CSS variable palette, section background alternation), and the shared navigation + footer. Commit and push.`,
+
+    `Build the homepage (root index.html) themed on the main service "${spec.mainService || spec.industry}", using the playbook's fixed section order and the visitor-first, direct-response copywriting rules. Drive every section with the audience research in the brief (pain → desire → fear → proof → CTA). Apply the H1 rule, no-pricing rule, and contact-display rules. Wire the lead-capture modal to the configured webhook. Commit and push.`,
+
+    `Build a dedicated page for every service in the brief (each as its own slug folder with index.html and clean URL), following the same fixed layout and hub-and-spoke internal linking back to the homepage. Then build the Privacy Policy and Terms & Conditions pages using the playbook's simplified legal layout. Commit and push.`,
+
+    `${spanishStep}\n\nFinal pass per the playbook: SEO meta tags + JSON-LD schema + sitemap.xml + robots.txt, adaptive favicons, the OG/social share image, the booking widget embed (if provided), and a 404 page. Generate any needed hero/OG images per the playbook's image rules. Verify every internal link resolves, the no-pricing and contact-display rules hold on every page, and the site is deployable as a static site. Fix anything broken, then commit and push.`.trim(),
   ];
 }

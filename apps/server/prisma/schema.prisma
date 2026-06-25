@@ -113,5 +113,9 @@ model WebCreatorSpec {
   accentHex   String
   logoUrl     String?
   logoPrompt  String?
+  // Conversion goal for the site (rewritable; defaults to lead generation).
+  goal        String   @default("")
+  // Full structured intake (all skill interview rounds) as JSON.
+  details     Json     @default("{}")
   createdAt   DateTime @default(now())
 }

@@ -12,6 +12,7 @@ import {
 import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
 import { serializeProject } from "../serialize.js";
+import { saveWebSpec } from "../webspec.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
 
 const projectInclude = {
@@ -180,25 +181,7 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const existing = await loadProject(getUserId(req), id);
     if (!existing) return reply.code(404).send({ error: "Not found" });
-    const { companyName, industry, accentHex, logoUrl, logoPrompt } = parsed.data;
-    await prisma.webCreatorSpec.upsert({
-      where: { projectId: id },
-      create: {
-        projectId: id,
-        companyName,
-        industry,
-        accentHex,
-        logoUrl: logoUrl ?? null,
-        logoPrompt: logoPrompt ?? null,
-      },
-      update: {
-        companyName,
-        industry,
-        accentHex,
-        logoUrl: logoUrl ?? null,
-        logoPrompt: logoPrompt ?? null,
-      },
-    });
+    await saveWebSpec(id, parsed.data);
     const project = await loadProject(getUserId(req), id);
     return { project: serializeProject(project!) };
   });

@@ -9,6 +9,8 @@ interface StartParams {
   userId: string;
   /** Defaults to "subscription" (Module 1); Web Creator passes "api". */
   authMode?: AuthMode;
+  /** Overrides the project's Module 1 goal (Web Creator passes the site goal). */
+  goalOverride?: GoalContext;
 }
 
 /**
@@ -35,7 +37,12 @@ class SessionRegistryImpl {
     return n;
   }
 
-  async start({ projectId, userId, authMode = "subscription" }: StartParams): Promise<AgentSession> {
+  async start({
+    projectId,
+    userId,
+    authMode = "subscription",
+    goalOverride,
+  }: StartParams): Promise<AgentSession> {
     const existing = this.sessions.get(projectId);
     if (existing && this.isRunning(projectId)) {
       throw new Error("A session is already running for this project.");
@@ -57,7 +64,7 @@ class SessionRegistryImpl {
       throw new Error("No pending instructions to run.");
     }
 
-    const goal: GoalContext = {
+    const goal: GoalContext = goalOverride ?? {
       mainGoal: project.goal?.mainGoal ?? "",
       limitations: project.goal?.limitations ?? "",
       reasoning: project.goal?.reasoning ?? "",
