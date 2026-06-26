@@ -165,6 +165,8 @@ Server boot smoke: `/api/health` → 200, unauthenticated `/api/projects` → 40
 
 - [ ] Real end-to-end run needs runtime secrets: `DATABASE_URL`, `ANTHROPIC_API_KEY`,
       `CLAUDE_CODE_OAUTH_TOKEN`, GitHub OAuth app (callback `<APP_URL>/api/github/callback`).
+      Full Railway deploy guide: `docs/railway-setup.md`; `railway.json` makes Railway build
+      `docker/Dockerfile` with healthcheck `/api/health`.
 - [ ] Flip PR #1 out of draft → ready-for-review, then merge when desired.
 - [ ] Crash/resume of in-memory sessions across server restarts (schema stores
       `sdkSessionId`; resume via SDK `options.resume` not wired yet).

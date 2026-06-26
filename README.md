@@ -59,9 +59,14 @@ Create a GitHub OAuth App with callback `‹APP_URL›/api/github/callback`.
 
 ## Deploy (Railway)
 
-Build the `docker/Dockerfile` (it bundles `git`, builds all three packages, copies the SPA
-into the server's `public/`, runs `prisma migrate deploy`, then boots). Provision a Postgres
-plugin and set the env vars above (`APP_URL` = your public URL).
+**Full step-by-step guide: [`docs/railway-setup.md`](docs/railway-setup.md).**
+
+In short: deploy this repo from GitHub (Railway reads `railway.json` and builds
+`docker/Dockerfile` — which bundles `git`, builds all three packages, copies the SPA into
+the server's `public/`, runs `prisma migrate deploy`, then boots), add a PostgreSQL plugin,
+create a GitHub OAuth App with callback `‹APP_URL›/api/github/callback`, and set the env
+vars (`DATABASE_URL`, `MASTER_ENCRYPTION_KEY`, `SESSION_SECRET`, `AUTH_PASSWORD_HASH`,
+`ANTHROPIC_API_KEY`, `GITHUB_CLIENT_ID/SECRET`, `APP_URL`). Health check: `/api/health`.
 
 ## Tests
 
