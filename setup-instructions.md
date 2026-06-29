@@ -47,38 +47,51 @@ monorepo warning in Part B, Step 1.
 | **Railway account** (railway.com) | hosting | yes (for deploy) |
 | **Anthropic API key** (console.anthropic.com) | Web Creator + Module 1 API fallback | yes |
 | **Namecheap** domain `fireflyrise.com` | custom domain | yes (for the custom URL) |
-| **Node 22 + pnpm** locally | generate the password hash / run locally | needed at least once (for the hash) |
+| **Node 22 + pnpm** locally | only for local development / generating the password hash yourself | optional (Railway-only deploy needs none) |
 | **Claude Pro/Max** + `claude setup-token` | lets Module 1 bill your subscription instead of the API | optional |
 | **Gemini API key** (aistudio.google.com) | logo generation in Web Creator | optional |
 | **Slack incoming webhook** | HIGH/CRITICAL error alerts | optional |
 
-Install pnpm if you don't have it: `npm i -g pnpm` (or `corepack enable`).
+**Windows + Railway-only?** Fully supported — you need none of the local tooling. Do
+everything in the browser (Railway, GitHub, Namecheap); generate the two random keys in
+PowerShell (shown below); and have the password hash generated for you. (Only install pnpm —
+`npm i -g pnpm` or `corepack enable` — if you choose to do local development in Part A.)
 
 ---
 
 ## Generate your secrets (do this first)
 
-You need three secret values. Generate them now and keep them somewhere safe — you'll paste
-them into Railway (Part B, Step 5) or your local `.env` (Part A).
+You need three secret values. Keep them somewhere safe — you'll paste them into Railway
+(Part B, Step 5).
 
-**1. `MASTER_ENCRYPTION_KEY`** — 32-byte key that encrypts stored tokens at rest:
-```bash
-openssl rand -base64 32
-# e.g. hyVMjeDo01yxhp2LTaXTzWaL+8+dXFTLwvBKccEKUYY=
-```
+> **Deploying straight to Railway with no local setup?** You don't need a code editor, Node,
+> or a clone. **Part A (local development) is optional — skip it.** Everything else (Railway,
+> GitHub OAuth, Namecheap) is done in the browser. The only things to generate are the values
+> below: the two random keys you can make in **Windows PowerShell** (no install), and the
+> password hash can be generated for you.
 
-**2. `SESSION_SECRET`** — signs your login cookie (any 32+ random chars):
-```bash
-openssl rand -base64 48 | tr -d '/+=' | cut -c1-48
+**1. `MASTER_ENCRYPTION_KEY`** — 32-byte key that encrypts stored tokens at rest.
+**Windows PowerShell** (paste the whole line, press Enter, copy the output):
+```powershell
+$b=[byte[]]::new(32);[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b);[Convert]::ToBase64String($b)
 ```
+<sub>macOS/Linux/Git Bash: `openssl rand -base64 32` · Node: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`</sub>
 
-**3. `AUTH_PASSWORD_HASH`** — the bcrypt hash of the password you'll log in with. From a clone
-of the repo:
-```bash
-pnpm install
-pnpm --filter @foreman/server hash-password 'YOUR_LOGIN_PASSWORD'
-# prints something like: $2a$12$abcd...   <- copy the whole line
+**2. `SESSION_SECRET`** — signs your login cookie. **Windows PowerShell:**
+```powershell
+$b=[byte[]]::new(36);[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b);[Convert]::ToBase64String($b) -replace '[/+=]',''
 ```
+<sub>macOS/Linux/Git Bash: `openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`</sub>
+
+**3. `AUTH_PASSWORD_HASH`** — the bcrypt hash of your login password. Generating a bcrypt hash
+needs a tool you won't have on a no-setup Windows machine, so use one of these:
+- **Easiest (no install):** decide on a password and have it hashed for you (e.g. ask the
+  person/assistant who set up Foreman to run the generator). You hand over only the password
+  you intend to use; the result is a one-way hash like `$2a$12$…`.
+- **If you have Node installed:** from a clone of the repo,
+  `pnpm install` then `pnpm --filter @foreman/server hash-password "YOUR_PASSWORD"` (use
+  **double** quotes on Windows). Copy the printed `$2a$12$…` line.
+
 You never store the plaintext password anywhere — only this hash. `AUTH_USERNAME` defaults to
 `admin`; you log in with `admin` + your password.
 
@@ -88,6 +101,10 @@ You never store the plaintext password anywhere — only this hash. `AUTH_USERNA
 ---
 
 ## Part A — Local development
+
+> **Optional — skip this if you're deploying directly to Railway.** This part is only for
+> running Foreman on your own computer during development. To go straight to production, jump
+> to [Part B](#part-b--deploy-to-railway-production).
 
 Run Foreman on your own machine. Requires Node 22 and a Postgres database.
 
