@@ -32,6 +32,9 @@ export async function testClaudeSubscription(): Promise<{ ok: boolean; detail: s
         // Isolate subscription auth: only the OAuth token, no API key fallback.
         env: {
           ...process.env,
+          // Claude Code refuses bypassPermissions as root unless it believes it's
+          // sandboxed; the Railway container runs as root, so flag it.
+          IS_SANDBOX: "1",
           ANTHROPIC_API_KEY: undefined,
           CLAUDE_CODE_OAUTH_TOKEN: env.claudeCodeOauthToken,
         } as Record<string, string | undefined>,

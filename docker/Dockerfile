@@ -27,6 +27,9 @@ RUN mkdir -p apps/server/public && cp -r apps/web/dist/* apps/server/public/
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+# The container runs as root; Claude Code blocks --dangerously-skip-permissions
+# under root unless it believes it's sandboxed. This is that escape hatch.
+ENV IS_SANDBOX=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
   && rm -rf /var/lib/apt/lists/*

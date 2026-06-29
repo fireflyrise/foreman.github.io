@@ -1,7 +1,7 @@
 # convo.md — Foreman build state & handoff
 
 > Living progress log so work can continue from any new branch. Read this first.
-> Last updated: 2026-06-25.
+> Last updated: 2026-06-29.
 
 ## Standing workflow rules (the user set these)
 
@@ -164,6 +164,13 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       unknown model id like the internal `claude-opus-4-8` exits the CLI); model is only
       passed when explicitly set. Capture subprocess `stderr` in the subscription test detail
       and stream it to the Agent Console for real Module 1 runs.
+- [x] Fix "--dangerously-skip-permissions cannot be used with root/sudo privileges": the
+      Railway runtime container runs as root, and Claude Code refuses `bypassPermissions`
+      under root unless it believes it's sandboxed. Set `IS_SANDBOX=1` in three places so
+      every code path is covered: `ENV IS_SANDBOX=1` in `docker/Dockerfile` (global, runtime
+      stage), and explicitly in the `env` object of `AgentSession.buildAuthEnv()` (Module 1
+      runs) and `integrations/testSubscription.ts` (the Max-subscription test). After this
+      deploys, "Test Max subscription" should go green and Module 1 runs no longer exit 1.
 
 ## Verification commands
 
