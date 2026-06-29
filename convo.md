@@ -148,6 +148,11 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
 - [x] Vitest: AsyncInbox sequencing + secrets round-trip/tamper (6/6 pass).
 - [x] Web Creator: full skill intake form + playbook injection + rewritable Module 2 goal.
 - [x] Error capture & triage: ErrorLog table + recordError wiring + digest notifier + triage doc.
+- [x] Real integration connection tests: live API check per provider (GitHub getAuthenticated,
+      Anthropic /v1/models, Railway `me` query, Gemini list-models) via GET /api/integrations/test
+      + "Test connections" button; Railway/Gemini saves now verify the credential before storing.
+      `integrations/test.ts`, `verifyRailwayToken`, `verifyGeminiKey`. (Status chips still mean
+      "present"; the Test button is the real check.)
 
 ## Verification commands
 

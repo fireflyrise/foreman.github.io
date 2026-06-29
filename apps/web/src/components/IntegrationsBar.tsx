@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { IntegrationStatusDTO } from "@foreman/shared";
+import type { IntegrationStatusDTO, IntegrationTestDTO } from "@foreman/shared";
 import { api } from "../api/client.js";
 import { Button, Label, Panel, TextInput } from "./ui.js";
+
+const TEST_LABELS: Record<string, string> = {
+  GITHUB: "GitHub",
+  RAILWAY: "Railway",
+  GEMINI: "Gemini",
+  ANTHROPIC: "Anthropic",
+};
 
 const LABELS: Record<string, string> = {
   GITHUB: "GitHub",
@@ -70,28 +77,58 @@ function Dialog({ onClose }: { onClose: () => void }) {
   const [railwayEnv, setRailwayEnv] = useState("");
   const [geminiKey, setGeminiKey] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [results, setResults] = useState<IntegrationTestDTO[] | null>(null);
+  const [testing, setTesting] = useState(false);
 
   function refresh() {
     void qc.invalidateQueries({ queryKey: ["integrations"] });
   }
 
+  async function runTest() {
+    setTesting(true);
+    setErr(null);
+    try {
+      const r = await api.testIntegrations();
+      setResults(r.results);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setTesting(false);
+    }
+  }
+
   async function saveRailway() {
-    await api.saveRailway({
-      token: railwayToken,
-      projectId: railwayProject || undefined,
-      serviceId: railwayService || undefined,
-      environmentId: railwayEnv || undefined,
-    });
-    setMsg("Railway saved");
-    setRailwayToken("");
-    refresh();
+    setMsg(null);
+    setErr(null);
+    try {
+      await api.saveRailway({
+        token: railwayToken,
+        projectId: railwayProject || undefined,
+        serviceId: railwayService || undefined,
+        environmentId: railwayEnv || undefined,
+      });
+      setMsg("Railway token verified & saved ✓");
+      setRailwayToken("");
+      refresh();
+      void runTest();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   }
 
   async function saveGemini() {
-    await api.saveGemini(geminiKey);
-    setMsg("Gemini saved");
-    setGeminiKey("");
-    refresh();
+    setMsg(null);
+    setErr(null);
+    try {
+      await api.saveGemini(geminiKey);
+      setMsg("Gemini key verified & saved ✓");
+      setGeminiKey("");
+      refresh();
+      void runTest();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   }
 
   const statuses = integrationsQuery.data?.integrations ?? [];
@@ -106,6 +143,35 @@ function Dialog({ onClose }: { onClose: () => void }) {
             ✕
           </button>
         </div>
+
+        <section className="mb-4 rounded-md border border-edge p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <Label>Connection test (live API check)</Label>
+            <Button variant="subtle" onClick={runTest} disabled={testing}>
+              {testing ? "Testing…" : "Test connections"}
+            </Button>
+          </div>
+          {results ? (
+            <div className="space-y-1">
+              {results.map((r) => (
+                <div key={r.provider} className="flex items-start gap-2 text-xs">
+                  <span className="w-4 shrink-0">
+                    {!r.connected ? "○" : r.ok ? "✅" : "❌"}
+                  </span>
+                  <span className="w-20 shrink-0 text-gray-300">{TEST_LABELS[r.provider] ?? r.provider}</span>
+                  <span className={r.ok ? "text-green-300" : r.connected ? "text-red-300" : "text-gray-500"}>
+                    {!r.connected ? "not connected" : r.detail}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Run a live check that actually calls each provider's API — a green ✅ means the
+              credential really works (not just that it's saved).
+            </p>
+          )}
+        </section>
 
         <div className="space-y-5">
           <section>
@@ -149,6 +215,7 @@ function Dialog({ onClose }: { onClose: () => void }) {
           </section>
 
           {msg && <p className="text-xs text-green-300">{msg}</p>}
+          {err && <p className="text-xs text-red-300">{err}</p>}
         </div>
       </Panel>
     </div>

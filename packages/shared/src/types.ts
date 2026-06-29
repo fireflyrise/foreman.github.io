@@ -96,6 +96,16 @@ export interface IntegrationStatusDTO {
   meta: Record<string, unknown>;
 }
 
+export interface IntegrationTestDTO {
+  provider: IntegrationProvider;
+  /** Whether a credential is present at all. */
+  connected: boolean;
+  /** Whether the live API call actually succeeded. */
+  ok: boolean;
+  /** Human-readable detail (login, "key valid", or the error message). */
+  detail: string;
+}
+
 export interface RepoDTO {
   owner: string;
   name: string;

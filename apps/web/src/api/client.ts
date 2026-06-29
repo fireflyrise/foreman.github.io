@@ -1,6 +1,7 @@
 import type {
   GenerateLogoInput,
   IntegrationStatusDTO,
+  IntegrationTestDTO,
   ProjectDTO,
   RepoDTO,
   WebCreatorInput,
@@ -51,6 +52,8 @@ export const api = {
   // integrations
   integrations: () =>
     req<{ integrations: IntegrationStatusDTO[] }>("GET", "/api/integrations"),
+  testIntegrations: () =>
+    req<{ results: IntegrationTestDTO[] }>("GET", "/api/integrations/test"),
   saveRailway: (input: {
     token: string;
     projectId?: string;
