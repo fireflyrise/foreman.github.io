@@ -3,8 +3,9 @@ import type { IntegrationProvider, IntegrationStatusDTO } from "@foreman/shared"
 import { GenerateLogoInput, SaveGeminiInput, SaveRailwayInput } from "@foreman/shared";
 import { getUserId, requireAuth } from "../auth.js";
 import { getMeta, isConnected } from "../integrations/store.js";
-import { saveRailway } from "../integrations/railway.js";
-import { generateLogo, saveGemini } from "../integrations/gemini.js";
+import { saveRailway, verifyRailwayToken } from "../integrations/railway.js";
+import { generateLogo, saveGemini, verifyGeminiKey } from "../integrations/gemini.js";
+import { testAllIntegrations } from "../integrations/test.js";
 import { env } from "../env.js";
 import { recordError } from "../errors/store.js";
 import { ErrorType } from "../errors/types.js";
@@ -35,18 +36,34 @@ export async function integrationRoutes(app: FastifyInstance): Promise<void> {
     return { integrations: statuses };
   });
 
-  // Railway: save token + ids.
+  // Live connection test: actually calls each provider's API.
+  app.get("/api/integrations/test", async (req) => {
+    const results = await testAllIntegrations(getUserId(req));
+    return { results };
+  });
+
+  // Railway: validate the token against the API, then save.
   app.put("/api/integrations/railway", async (req, reply) => {
     const parsed = SaveRailwayInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
+    try {
+      await verifyRailwayToken(parsed.data.token);
+    } catch (err) {
+      return reply.code(400).send({ error: `Railway token rejected: ${(err as Error).message}` });
+    }
     await saveRailway(getUserId(req), parsed.data);
     return { ok: true };
   });
 
-  // Gemini: save API key.
+  // Gemini: validate the key against the API, then save.
   app.put("/api/integrations/gemini", async (req, reply) => {
     const parsed = SaveGeminiInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
+    try {
+      await verifyGeminiKey(parsed.data.apiKey);
+    } catch (err) {
+      return reply.code(400).send({ error: `Gemini key rejected: ${(err as Error).message}` });
+    }
     await saveGemini(getUserId(req), parsed.data.apiKey);
     return { ok: true };
   });

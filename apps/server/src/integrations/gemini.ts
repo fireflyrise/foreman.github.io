@@ -15,6 +15,16 @@ export async function getGeminiKey(userId: string): Promise<string | null> {
   return cred?.apiKey ?? (env.geminiApiKey || null);
 }
 
+/** Verify a Gemini API key by listing models (cheap, no generation cost). */
+export async function verifyGeminiKey(apiKey: string): Promise<void> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,
+  );
+  if (!res.ok) {
+    throw new Error(`Gemini API returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+}
+
 export interface GeneratedLogo {
   /** data: URL with base64 PNG/JPEG payload. */
   dataUrl: string;

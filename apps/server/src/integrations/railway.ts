@@ -42,6 +42,16 @@ export async function getRailway(
   return loadCredential<RailwayCredential>(userId, "RAILWAY");
 }
 
+/** Verify a Railway API token by querying the authenticated user. Returns a label. */
+export async function verifyRailwayToken(token: string): Promise<string> {
+  const data = await railwayQuery<{ me: { email?: string; name?: string; id?: string } }>(
+    token,
+    `query { me { id email name } }`,
+    {},
+  );
+  return data.me?.email || data.me?.name || data.me?.id || "ok";
+}
+
 /**
  * Resolve which Railway project/service/environment a query targets. The token
  * is always the user's account-wide Railway token; the project/service/env IDs
