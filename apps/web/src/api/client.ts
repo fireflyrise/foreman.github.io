@@ -54,6 +54,11 @@ export const api = {
     req<{ integrations: IntegrationStatusDTO[] }>("GET", "/api/integrations"),
   testIntegrations: () =>
     req<{ results: IntegrationTestDTO[] }>("GET", "/api/integrations/test"),
+  testSubscription: () =>
+    req<{ result: { ok: boolean; detail: string } }>(
+      "POST",
+      "/api/integrations/test-subscription",
+    ),
   saveRailway: (input: {
     token: string;
     projectId?: string;
