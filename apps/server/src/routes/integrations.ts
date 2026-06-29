@@ -49,7 +49,11 @@ export async function integrationRoutes(app: FastifyInstance): Promise<void> {
     try {
       await verifyRailwayToken(parsed.data.token);
     } catch (err) {
-      return reply.code(400).send({ error: `Railway token rejected: ${(err as Error).message}` });
+      const msg = (err as Error).message;
+      const hint = /not authorized|unauthorized/i.test(msg)
+        ? " — make sure it's an Account/Personal API token from railway.com/account/tokens, not a project token."
+        : "";
+      return reply.code(400).send({ error: `Railway token rejected: ${msg}${hint}` });
     }
     await saveRailway(getUserId(req), parsed.data);
     return { ok: true };
