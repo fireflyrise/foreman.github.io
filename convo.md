@@ -160,6 +160,10 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       using ONLY CLAUDE_CODE_OAUTH_TOKEN (API key removed from that call's env) so success
       proves Module 1 bills against the Max plan. `integrations/testSubscription.ts` +
       POST /api/integrations/test-subscription.
+- [x] Fix "Claude Code process exited with code 1": AGENT_MODEL default is now EMPTY (an
+      unknown model id like the internal `claude-opus-4-8` exits the CLI); model is only
+      passed when explicitly set. Capture subprocess `stderr` in the subscription test detail
+      and stream it to the Agent Console for real Module 1 runs.
 
 ## Verification commands
 
