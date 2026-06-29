@@ -162,7 +162,9 @@ export class AgentSession {
   private buildOptions() {
     return {
       cwd: this.repo.workdir,
-      model: env.agentModel,
+      // Only force a model when explicitly configured — an unknown model id
+      // makes the Claude Code process exit immediately.
+      ...(env.agentModel ? { model: env.agentModel } : {}),
       permissionMode: "bypassPermissions" as const,
       systemPrompt: {
         type: "preset" as const,
@@ -174,6 +176,11 @@ export class AgentSession {
         logo: createLogoMcpServer(this.userId),
       },
       canUseTool: async () => ({ behavior: "allow" as const, updatedInput: {} }),
+      // Surface subprocess stderr to the console so failures are diagnosable.
+      stderr: (d: string) => {
+        const t = d.trim();
+        if (t) this.emit({ type: "log", level: "error", text: t.slice(0, 1000) });
+      },
       env: this.buildAuthEnv(),
     };
   }

@@ -16,12 +16,19 @@ export async function testClaudeSubscription(): Promise<{ ok: boolean; detail: s
   }
 
   let q: ReturnType<typeof query> | null = null;
+  let stderr = "";
   try {
     q = query({
       prompt: "Reply with exactly: OK",
       options: {
-        model: env.agentModel,
+        // Only force a model if one is explicitly configured; otherwise let the
+        // Claude Code CLI use its default (an invalid model id exits the process).
+        ...(env.agentModel ? { model: env.agentModel } : {}),
+        maxTurns: 1,
         permissionMode: "bypassPermissions",
+        stderr: (d: string) => {
+          stderr += d;
+        },
         // Isolate subscription auth: only the OAuth token, no API key fallback.
         env: {
           ...process.env,
@@ -48,7 +55,9 @@ export async function testClaudeSubscription(): Promise<{ ok: boolean; detail: s
       ? { ok: true, detail: "Subscription token valid — a test call succeeded on your Max plan." }
       : { ok: false, detail: "Test call finished without success (token may be invalid/expired)." };
   } catch (e) {
-    return { ok: false, detail: (e as Error).message };
+    const tail = stderr.trim().split("\n").slice(-6).join("\n").slice(0, 600);
+    const detail = tail ? `${(e as Error).message} — ${tail}` : (e as Error).message;
+    return { ok: false, detail };
   } finally {
     try {
       await q?.return?.(undefined);

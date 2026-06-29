@@ -48,7 +48,9 @@ export const env = {
   // Long-lived OAuth token from `claude setup-token` (Max/Pro). Used for
   // Module 1 (Software Creator) so work bills against the subscription.
   claudeCodeOauthToken: optional("CLAUDE_CODE_OAUTH_TOKEN"),
-  agentModel: optional("AGENT_MODEL", "claude-opus-4-8"),
+  // Empty = let the Claude Code CLI pick its default model (passing an unknown
+  // model id exits the process). Override with a valid alias/id via AGENT_MODEL.
+  agentModel: optional("AGENT_MODEL", ""),
   maxConcurrentSessions: int("MAX_CONCURRENT_SESSIONS", 3),
   sessionCostLimitUsd: num("SESSION_COST_LIMIT_USD", 10),
 
