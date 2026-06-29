@@ -194,6 +194,10 @@ export class AgentSession {
     const useApi = this.authMode === "api" || this.apiKeyOverride;
     return {
       ...process.env,
+      // Claude Code refuses --dangerously-skip-permissions (bypassPermissions)
+      // as root unless it's told it's in a sandbox. Foreman runs in an isolated
+      // container, so allow it.
+      IS_SANDBOX: "1",
       ANTHROPIC_API_KEY: useApi ? env.anthropicApiKey : undefined,
       CLAUDE_CODE_OAUTH_TOKEN: useApi ? undefined : env.claudeCodeOauthToken,
     };
