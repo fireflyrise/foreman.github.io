@@ -61,22 +61,38 @@ Install pnpm if you don't have it: `npm i -g pnpm` (or `corepack enable`).
 You need three secret values. Generate them now and keep them somewhere safe — you'll paste
 them into Railway (Part B, Step 5) or your local `.env` (Part A).
 
+> **Windows note:** `openssl` is **not** available in `cmd`/PowerShell by default — you'll see
+> *"'openssl' is not recognized…"*. Use the **Node** or **PowerShell** command shown for each
+> value instead (Node is easiest since you need it for the project anyway). `openssl` *does*
+> work in **Git Bash** (installed with Git for Windows) if you prefer it.
+
 **1. `MASTER_ENCRYPTION_KEY`** — 32-byte key that encrypts stored tokens at rest:
 ```bash
+# macOS/Linux/Git Bash:
 openssl rand -base64 32
+# Node (any OS):
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+# PowerShell (Windows):
+#   $b=[byte[]]::new(32);[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b);[Convert]::ToBase64String($b)
 # e.g. hyVMjeDo01yxhp2LTaXTzWaL+8+dXFTLwvBKccEKUYY=
 ```
 
 **2. `SESSION_SECRET`** — signs your login cookie (any 32+ random chars):
 ```bash
+# macOS/Linux/Git Bash:
 openssl rand -base64 48 | tr -d '/+=' | cut -c1-48
+# Node (any OS):
+node -e "console.log(require('crypto').randomBytes(48).toString('base64').replace(/[/+=]/g,'').slice(0,48))"
 ```
 
 **3. `AUTH_PASSWORD_HASH`** — the bcrypt hash of the password you'll log in with. From a clone
 of the repo:
 ```bash
 pnpm install
+# macOS/Linux/Git Bash (single quotes):
 pnpm --filter @foreman/server hash-password 'YOUR_LOGIN_PASSWORD'
+# Windows cmd/PowerShell (use DOUBLE quotes):
+pnpm --filter @foreman/server hash-password "YOUR_LOGIN_PASSWORD"
 # prints something like: $2a$12$abcd...   <- copy the whole line
 ```
 You never store the plaintext password anywhere — only this hash. `AUTH_USERNAME` defaults to
