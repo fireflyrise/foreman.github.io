@@ -168,7 +168,9 @@ Server boot smoke: `/api/health` → 200, unauthenticated `/api/projects` → 40
       Full setup guide (local dev + Railway deploy, all-encompassing): `setup-instructions.md`
       at repo root (custom domain `foreman.fireflyrise.com` via Namecheap CNAME → Railway
       custom domain); `railway.json` makes Railway build `docker/Dockerfile` with healthcheck
-      `/api/health`.
+      `/api/health`. GOTCHA: Railway auto-splits the pnpm monorepo into two Nixpacks services
+      (`server`+`web`) — discard that and use ONE Dockerfile service (root dir empty, builder
+      Dockerfile, path `docker/Dockerfile`). Documented in setup-instructions.md Part B step 3.
 - [ ] Flip PR #1 out of draft → ready-for-review, then merge when desired.
 - [ ] Crash/resume of in-memory sessions across server restarts (schema stores
       `sdkSessionId`; resume via SDK `options.resume` not wired yet).
