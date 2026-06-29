@@ -33,14 +33,39 @@ You'll paste these into Railway as environment variables in step 3.
    The first deploy will **fail/restart** until you add the env vars and database below —
    that's expected.
 
-## 2. Create the GitHub OAuth App
+## 2. Set up the custom domain (`foreman.fireflyrise.com` on Namecheap)
 
-You need Foreman's public URL first. In Railway: **Settings → Networking → Generate Domain**
-(e.g. `https://foreman-production.up.railway.app`). Call this `APP_URL`.
+Foreman's public URL is **`https://foreman.fireflyrise.com`** — this is your `APP_URL`.
 
-Then at GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**:
-- **Homepage URL:** `APP_URL`
-- **Authorization callback URL:** `APP_URL/api/github/callback`  ← must match exactly
+**a. In Railway** → Foreman service → **Settings → Networking → Custom Domain** → enter
+`foreman.fireflyrise.com`. Railway shows a **CNAME target** to point at, e.g.
+`abcd1234.up.railway.app` (copy the exact value it gives you).
+
+**b. In Namecheap** → Domain List → **Manage** `fireflyrise.com` → **Advanced DNS** →
+**Add New Record**:
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| `CNAME Record` | `foreman` | `<the Railway CNAME target>` (e.g. `abcd1234.up.railway.app`) | Automatic |
+
+- Host is just `foreman` (Namecheap appends `.fireflyrise.com` automatically) — **not** the
+  full domain.
+- Remove any existing record for the `foreman` host that would conflict (an old A/CNAME/URL
+  Redirect). Don't use Namecheap's "URL Redirect" — it must be a real CNAME.
+- Save. DNS usually propagates in minutes (can take up to a few hours). Railway
+  auto-provisions the TLS certificate once it sees the CNAME — wait until Railway shows the
+  domain as **Active / certificate issued**.
+
+> For a quick test before DNS is ready, you can also **Generate Domain** in Railway to get a
+> temporary `*.up.railway.app` URL, but the GitHub OAuth callback (next) must match whatever
+> `APP_URL` you actually use. Use the custom domain for the real setup.
+
+## 2b. Create the GitHub OAuth App
+
+At GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**:
+- **Homepage URL:** `https://foreman.fireflyrise.com`
+- **Authorization callback URL:** `https://foreman.fireflyrise.com/api/github/callback`
+  ← must match exactly
 
 Copy the **Client ID** and generate a **Client Secret**.
 
@@ -56,8 +81,8 @@ On the **Foreman service → Variables**, add:
 
 ```
 NODE_ENV=production
-APP_URL=https://YOUR-DOMAIN.up.railway.app
-WEB_ORIGIN=https://YOUR-DOMAIN.up.railway.app
+APP_URL=https://foreman.fireflyrise.com
+WEB_ORIGIN=https://foreman.fireflyrise.com
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 
 AUTH_USERNAME=admin
@@ -68,8 +93,8 @@ MASTER_ENCRYPTION_KEY=<from step 0>
 ANTHROPIC_API_KEY=<your key>
 # CLAUDE_CODE_OAUTH_TOKEN=<optional, for Module 1 on your Max plan>
 
-GITHUB_CLIENT_ID=<from step 2>
-GITHUB_CLIENT_SECRET=<from step 2>
+GITHUB_CLIENT_ID=<from step 2b>
+GITHUB_CLIENT_SECRET=<from step 2b>
 
 # Optional
 GEMINI_API_KEY=<optional>
@@ -96,10 +121,11 @@ Without a volume it still works — repos are just re-cloned after a redeploy.
 
 ## 6. Redeploy & verify
 
-Trigger a redeploy (Railway does this on variable change). Then:
+Trigger a redeploy (Railway does this on variable change). Wait until the custom domain
+shows **Active** in Railway (TLS issued). Then:
 
-- Healthcheck: `APP_URL/api/health` → `{"ok":true}` (Railway's healthcheck uses this).
-- Open `APP_URL` → log in with `AUTH_USERNAME` + your password.
+- Healthcheck: `https://foreman.fireflyrise.com/api/health` → `{"ok":true}`.
+- Open `https://foreman.fireflyrise.com` → log in with `AUTH_USERNAME` + your password.
 - **Integrations → Connect GitHub** (OAuth round-trip), then **Add Project** → pick a repo.
 - Optionally paste your **Railway API token** in Integrations and set per-project Railway
   IDs via the 🚆 dialog (see below) so Foreman can pull each project's deploy logs.
@@ -135,6 +161,12 @@ it's app-owned.
   `MASTER_ENCRYPTION_KEY`, `SESSION_SECRET`, `DATABASE_URL`. Errors are also written to the
   `ErrorLog` table (`SERVER_BOOT_FAILURE`).
 - **GitHub connect fails / redirect mismatch:** the OAuth callback must be exactly
-  `APP_URL/api/github/callback` and `APP_URL` must equal your real domain.
+  `https://foreman.fireflyrise.com/api/github/callback`, and `APP_URL` must equal that
+  domain.
+- **Domain not working / no certificate:** confirm the Namecheap **CNAME** for host
+  `foreman` points at the exact target Railway gave you, there's no conflicting A/URL-Redirect
+  record for that host, and you've waited for propagation (check with
+  `dig foreman.fireflyrise.com CNAME +short` or `nslookup`). Railway issues TLS only after it
+  resolves.
 - **Migrations:** run automatically on boot; to run manually,
   `pnpm --filter @foreman/server db:deploy` with `DATABASE_URL` set.
