@@ -1,17 +1,57 @@
-# Deploying Foreman to Railway
+# Foreman — Setup Instructions
 
-Step-by-step setup. ~15 minutes. Foreman runs as a single Docker service + a Postgres
-database. The repo already includes `docker/Dockerfile` and `railway.json`, so Railway
-builds and boots it without extra config.
+The single, all-encompassing setup guide. Covers **local development** and the full
+**production deploy to Railway** (custom domain `foreman.fireflyrise.com` on Namecheap),
+plus connecting integrations and monitoring.
+
+Foreman runs as a single Docker service + a Postgres database. The repo already includes
+`docker/Dockerfile` and `railway.json`, so Railway builds and boots it without extra config.
 
 > ⚠️ Foreman runs Claude Code in **full-bypass** mode and stores GitHub/Anthropic/Railway
 > credentials. It is single-user and login-gated — never share the URL or the password.
 
+## Contents
+- [Part A — Local development](#part-a--local-development)
+- [Part B — Deploy to Railway (production)](#part-b--deploy-to-railway-production)
+- [Part C — Connect Railway log access](#connecting-railway-log-access-for-the-projects-foreman-builds)
+- [Part D — Foreman's own error monitoring](#foremans-own-error-monitoring)
+- [Troubleshooting](#troubleshooting)
+
 ---
+
+# Part A — Local development
+
+For running Foreman on your own machine (Node 22 + a local/remote Postgres).
+
+```bash
+pnpm install
+
+# Generate secrets and your login password hash:
+openssl rand -base64 32                                   # -> MASTER_ENCRYPTION_KEY
+openssl rand -base64 32                                   # -> SESSION_SECRET
+pnpm --filter @foreman/server hash-password 'your-pass'   # -> AUTH_PASSWORD_HASH
+
+cp .env.example apps/server/.env     # then fill it in (see the variable list in Part B)
+pnpm db:migrate                       # needs a running Postgres + DATABASE_URL
+
+pnpm dev                              # server on :3001, web on :5173 (proxies /api)
+```
+
+Create a GitHub OAuth App with callback `http://localhost:3001/api/github/callback` for
+local use (or point `APP_URL` at wherever the server is reachable). Then open
+`http://localhost:5173`, log in, and connect GitHub.
+
+`pnpm test` / `pnpm typecheck` / `pnpm build` validate the workspace.
+
+---
+
+# Part B — Deploy to Railway (production)
+
+Step-by-step, ~15 minutes.
 
 ## 0. Prerequisites (gather these first)
 
-You'll paste these into Railway as environment variables in step 3.
+You'll paste these into Railway as environment variables in step 4.
 
 | Value | How to get it |
 |---|---|
@@ -20,7 +60,7 @@ You'll paste these into Railway as environment variables in step 3.
 | `AUTH_PASSWORD_HASH` | clone the repo, then `pnpm install && pnpm --filter @foreman/server hash-password 'YOUR_LOGIN_PASSWORD'` — copy the printed hash |
 | `ANTHROPIC_API_KEY` | console.anthropic.com → API keys (used for Web Creator + Module 1 API fallback) |
 | `CLAUDE_CODE_OAUTH_TOKEN` *(optional)* | run `claude setup-token` locally (needs a Pro/Max plan) — lets Module 1 bill your subscription |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth App (step 2) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth App (step 2b) |
 | `GEMINI_API_KEY` *(optional)* | aistudio.google.com → API key (logo generation) |
 
 ---
