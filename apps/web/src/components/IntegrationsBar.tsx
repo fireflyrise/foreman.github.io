@@ -102,13 +102,14 @@ function Dialog({ onClose }: { onClose: () => void }) {
     setMsg(null);
     setErr(null);
     try {
-      await api.saveRailway({
+      const r = await api.saveRailway({
         token: railwayToken,
         projectId: railwayProject || undefined,
         serviceId: railwayService || undefined,
         environmentId: railwayEnv || undefined,
       });
-      setMsg("Railway token verified & saved ✓");
+      if (r.warning) setMsg(r.warning);
+      else setMsg("Railway token verified & saved ✓");
       setRailwayToken("");
       refresh();
       void runTest();

@@ -59,7 +59,7 @@ export const api = {
     projectId?: string;
     serviceId?: string;
     environmentId?: string;
-  }) => req<{ ok: boolean }>("PUT", "/api/integrations/railway", input),
+  }) => req<{ ok: boolean; warning?: string }>("PUT", "/api/integrations/railway", input),
   saveGemini: (apiKey: string) =>
     req<{ ok: boolean }>("PUT", "/api/integrations/gemini", { apiKey }),
   generateLogo: (input: GenerateLogoInput) =>

@@ -152,8 +152,10 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       Anthropic /v1/models, Railway `me` query, Gemini list-models) via GET /api/integrations/test
       + "Test connections" button; Railway/Gemini saves now verify the credential before storing.
       `integrations/test.ts`, `verifyRailwayToken`, `verifyGeminiKey`. (Status chips still mean
-      "present"; the Test button is the real check.) Railway needs an ACCOUNT/Personal API
-      token (railway.com/account/tokens), not a project token — the reject message hints this.
+      "present"; the Test button is the real check.) Railway token verify tries `me`, then
+      falls back to a `projects` query (workspace/team-scoped tokens can't use `me`); the
+      Railway save is non-blocking (warns instead of 400) so a valid workspace token always
+      saves. The real functional Railway test is the per-project ↻ button.
 
 ## Verification commands
 
