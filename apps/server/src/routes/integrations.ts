@@ -42,21 +42,24 @@ export async function integrationRoutes(app: FastifyInstance): Promise<void> {
     return { results };
   });
 
-  // Railway: validate the token against the API, then save.
+  // Railway: best-effort verify, then save. We do NOT hard-reject, because a
+  // valid token scoped to a workspace can fail the standalone identity check
+  // while still working for the deployment-log queries. The real functional
+  // test is the per-project ↻ Railway button / Test connections.
   app.put("/api/integrations/railway", async (req, reply) => {
     const parsed = SaveRailwayInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
+    let warning: string | undefined;
     try {
       await verifyRailwayToken(parsed.data.token);
     } catch (err) {
-      const msg = (err as Error).message;
-      const hint = /not authorized|unauthorized/i.test(msg)
-        ? " — make sure it's an Account/Personal API token from railway.com/account/tokens, not a project token."
-        : "";
-      return reply.code(400).send({ error: `Railway token rejected: ${msg}${hint}` });
+      warning =
+        `Saved, but couldn't verify the token (${(err as Error).message}). ` +
+        `If it's a workspace-scoped token this can be normal — confirm with Test connections ` +
+        `or the ↻ Railway button on a project.`;
     }
     await saveRailway(getUserId(req), parsed.data);
-    return { ok: true };
+    return { ok: true, warning };
   });
 
   // Gemini: validate the key against the API, then save.

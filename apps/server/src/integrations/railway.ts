@@ -42,14 +42,30 @@ export async function getRailway(
   return loadCredential<RailwayCredential>(userId, "RAILWAY");
 }
 
-/** Verify a Railway API token by querying the authenticated user. Returns a label. */
+/**
+ * Verify a Railway API token. Personal tokens answer the `me` query; tokens
+ * scoped to a workspace/team do not, so fall back to listing accessible
+ * projects. Either succeeding proves the token authenticates.
+ */
 export async function verifyRailwayToken(token: string): Promise<string> {
-  const data = await railwayQuery<{ me: { email?: string; name?: string; id?: string } }>(
-    token,
-    `query { me { id email name } }`,
-    {},
-  );
-  return data.me?.email || data.me?.name || data.me?.id || "ok";
+  try {
+    const data = await railwayQuery<{ me: { email?: string; name?: string; id?: string } }>(
+      token,
+      `query { me { id email name } }`,
+      {},
+    );
+    return data.me?.email || data.me?.name || data.me?.id || "ok";
+  } catch (meErr) {
+    try {
+      const data = await railwayQuery<{
+        projects: { edges: Array<{ node: { id: string; name: string } }> };
+      }>(token, `query { projects(first: 1) { edges { node { id name } } } }`, {});
+      const name = data.projects?.edges?.[0]?.node?.name;
+      return name ? `workspace token (e.g. project "${name}")` : "workspace token";
+    } catch {
+      throw meErr; // surface the original auth error
+    }
+  }
 }
 
 /**
