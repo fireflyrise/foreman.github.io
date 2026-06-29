@@ -6,6 +6,7 @@ import { getMeta, isConnected } from "../integrations/store.js";
 import { saveRailway, verifyRailwayToken } from "../integrations/railway.js";
 import { generateLogo, saveGemini, verifyGeminiKey } from "../integrations/gemini.js";
 import { testAllIntegrations } from "../integrations/test.js";
+import { testClaudeSubscription } from "../integrations/testSubscription.js";
 import { env } from "../env.js";
 import { recordError } from "../errors/store.js";
 import { ErrorType } from "../errors/types.js";
@@ -40,6 +41,12 @@ export async function integrationRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/integrations/test", async (req) => {
     const results = await testAllIntegrations(getUserId(req));
     return { results };
+  });
+
+  // Real Max-subscription test: runs a tiny Claude Code call on the OAuth token.
+  app.post("/api/integrations/test-subscription", async () => {
+    const result = await testClaudeSubscription();
+    return { result };
   });
 
   // Railway: best-effort verify, then save. We do NOT hard-reject, because a

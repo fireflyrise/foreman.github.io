@@ -80,6 +80,8 @@ function Dialog({ onClose }: { onClose: () => void }) {
   const [err, setErr] = useState<string | null>(null);
   const [results, setResults] = useState<IntegrationTestDTO[] | null>(null);
   const [testing, setTesting] = useState(false);
+  const [subResult, setSubResult] = useState<{ ok: boolean; detail: string } | null>(null);
+  const [subTesting, setSubTesting] = useState(false);
 
   function refresh() {
     void qc.invalidateQueries({ queryKey: ["integrations"] });
@@ -95,6 +97,19 @@ function Dialog({ onClose }: { onClose: () => void }) {
       setErr((e as Error).message);
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function testSubscription() {
+    setSubTesting(true);
+    setSubResult(null);
+    try {
+      const r = await api.testSubscription();
+      setSubResult(r.result);
+    } catch (e) {
+      setSubResult({ ok: false, detail: (e as Error).message });
+    } finally {
+      setSubTesting(false);
     }
   }
 
@@ -170,6 +185,27 @@ function Dialog({ onClose }: { onClose: () => void }) {
             <p className="text-xs text-gray-500">
               Run a live check that actually calls each provider's API — a green ✅ means the
               credential really works (not just that it's saved).
+            </p>
+          )}
+        </section>
+
+        <section className="mb-4 rounded-md border border-edge p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <Label>Max subscription (Module 1 / CLAUDE_CODE_OAUTH_TOKEN)</Label>
+            <Button variant="subtle" onClick={testSubscription} disabled={subTesting}>
+              {subTesting ? "Testing…" : "Test Max subscription"}
+            </Button>
+          </div>
+          {subResult ? (
+            <p className={`text-xs ${subResult.ok ? "text-green-300" : "text-red-300"}`}>
+              {subResult.ok ? "✅ " : "❌ "}
+              {subResult.detail}
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Runs a tiny real Claude Code call using only your subscription token (no API-key
+              fallback) — a green ✅ confirms Module 1 will bill against your Max plan. Uses a
+              small amount of plan usage.
             </p>
           )}
         </section>

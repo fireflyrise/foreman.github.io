@@ -156,6 +156,10 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       falls back to a `projects` query (workspace/team-scoped tokens can't use `me`); the
       Railway save is non-blocking (warns instead of 400) so a valid workspace token always
       saves. The real functional Railway test is the per-project ↻ button.
+- [x] Max-subscription test: "Test Max subscription" button runs a tiny real Claude Code call
+      using ONLY CLAUDE_CODE_OAUTH_TOKEN (API key removed from that call's env) so success
+      proves Module 1 bills against the Max plan. `integrations/testSubscription.ts` +
+      POST /api/integrations/test-subscription.
 
 ## Verification commands
 
