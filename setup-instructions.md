@@ -69,7 +69,16 @@ You'll paste these into Railway as environment variables in step 4.
 
 1. Push this repo to GitHub (it already is).
 2. railway.com → **New Project → Deploy from GitHub repo** → pick `foreman.github.io`.
-3. Railway detects `railway.json` and builds `docker/Dockerfile` automatically.
+3. **⚠️ Use ONE service (Dockerfile), not Railway's monorepo split.** Foreman is a single
+   container — the `docker/Dockerfile` builds all three packages, bundles the web UI into the
+   server, runs migrations, and boots one process. Railway may auto-detect the pnpm workspace
+   and stage **two** services (`server` + `web`, Nixpacks) — **do not deploy that.** Discard
+   the staged changes (remove both cards / use the undo arrow), then add a **single** service:
+   **＋ New → GitHub Repo → `foreman.github.io`**, and in its **Settings**:
+   - **Root Directory:** leave **empty** (repo root — the Dockerfile build context).
+   - **Build:** confirm **Builder = Dockerfile**, path **`docker/Dockerfile`** (Railway reads
+     the root `railway.json`; if it shows *Nixpacks*, switch it to Dockerfile manually).
+
    The first deploy will **fail/restart** until you add the env vars and database below —
    that's expected.
 
