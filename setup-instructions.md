@@ -76,8 +76,16 @@ You'll paste these into Railway as environment variables in step 4.
    the staged changes (remove both cards / use the undo arrow), then add a **single** service:
    **＋ New → GitHub Repo → `foreman.github.io`**, and in its **Settings**:
    - **Root Directory:** leave **empty** (repo root — the Dockerfile build context).
-   - **Build:** confirm **Builder = Dockerfile**, path **`docker/Dockerfile`** (Railway reads
-     the root `railway.json`; if it shows *Nixpacks*, switch it to Dockerfile manually).
+   - **Dockerfile Path:** set to **`docker/Dockerfile`**. The field defaults to `Dockerfile`
+     (repo root), but ours lives at `docker/Dockerfile` — if you leave the default the build
+     fails because there's no root Dockerfile. (Railway also reads the root `railway.json`,
+     but set this field explicitly to be safe. If the builder shows *Nixpacks*, switch it to
+     Dockerfile.)
+   - **Watch Paths:** leave **empty** — that means "redeploy on any push to the branch," which
+     is correct for a single-service repo. (Watch Paths are a monorepo optimization to skip
+     rebuilds when unrelated files change; you don't need them. If you ever want to skip
+     docs-only redeploys, you *could* add `apps/**`, `packages/**`, `docker/**`,
+     `package.json`, `pnpm-lock.yaml` — optional.)
 
    The first deploy will **fail/restart** until you add the env vars and database below —
    that's expected.
