@@ -308,6 +308,9 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       NOTE: user pasted PNGs but a chat-pasted image can't be reconstructed to exact bytes;
       using an SVG crown so it works immediately. To use the user's EXACT files, drop
       `apps/web/public/logo.png` + `favicon.png` and switch the two refs.
+- [x] User uploaded real `logo.png` + `favicon.png` to the branch (commit "Add files via
+      upload"). Switched header `<img>` → `/logo.png`, favicon link → `/favicon.png` (png),
+      removed the placeholder `logo.svg`. Both PNGs bundle to `dist/` and serve at root.
 
 ## Verification commands
 

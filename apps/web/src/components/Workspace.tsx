@@ -38,7 +38,7 @@ export function Workspace() {
       <header className="flex items-center justify-between border-b border-edge bg-panel px-4 py-2">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 text-sm font-semibold">
-            <img src="/logo.svg" alt="" className="h-6 w-6" />
+            <img src="/logo.png" alt="" className="h-6 w-6 object-contain" />
             Foreman
           </span>
           <IntegrationsBar
