@@ -116,7 +116,7 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
               disabled={!isWeb && project.instructions.length === 0}
               title={isWeb ? "Generate the website from the form and build it" : "Run the instruction list"}
             >
-              {isWeb ? "▶ Generate & build" : "▶ Run"}
+              ▶ Run
             </Button>
           )}
         </div>
