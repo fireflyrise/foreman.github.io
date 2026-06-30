@@ -22,7 +22,7 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
   const qc = useQueryClient();
   const [nonce, setNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const { lines, status } = useAgentStream(project.id, nonce);
+  const { lines, status, clear } = useAgentStream(project.id, nonce);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,6 +84,14 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
           ) : null}
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            onClick={clear}
+            disabled={lines.length === 0}
+            title="Clear the console view (refresh replays history)"
+          >
+            Clear
+          </Button>
           <Button variant="ghost" onClick={refreshRailway} title="Pull Railway logs & self-heal">
             ↻ Railway
           </Button>

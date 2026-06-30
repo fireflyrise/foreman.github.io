@@ -257,6 +257,10 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       image items off the clipboard and gives each a unique `pasted-<ts>-<i>.<ext>` name so
       same-named pastes don't collide on disk. Builds on the existing attachment system.
 
+- [x] Clear Agent Console button: `useAgentStream` exposes `clear()` (empties on-screen
+      lines, view-only); `AgentConsole` has a "Clear" ghost button (disabled when empty).
+      Live events keep appending after; a refresh replays persisted history from the DB.
+
 ## Verification commands
 
 ```bash
