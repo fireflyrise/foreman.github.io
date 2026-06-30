@@ -22,6 +22,11 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
     await qc.invalidateQueries({ queryKey: ["projects"] });
   }
 
+  async function changeWebAuthMode(webAuthMode: "subscription" | "api") {
+    await api.setWebAuthMode(project.id, webAuthMode);
+    await qc.invalidateQueries({ queryKey: ["projects"] });
+  }
+
   async function changeMergePolicy(mergePolicy: "PER_INSTRUCTION" | "PER_SESSION" | "MANUAL") {
     await api.setMergePolicy(project.id, mergePolicy);
     await qc.invalidateQueries({ queryKey: ["projects"] });
@@ -59,12 +64,16 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
           </label>
           <label
             className="flex items-center gap-1 text-[11px] text-gray-500"
-            title="Which credential the Software Creator (Module 1) bills against. Web Creator (Module 2) has its own auth setting in that tab."
+            title={`Which credential the ${module === "web" ? "Web Creator (Module 2)" : "Software Creator (Module 1)"} bills against — your Max subscription or the pay-as-you-go API key. This is the setting for the tab you're on.`}
           >
-            software auth:
+            billing ({module === "web" ? "Web" : "Software"}):
             <select
-              value={project.authMode}
-              onChange={(e) => changeAuthMode(e.target.value as "subscription" | "api")}
+              value={module === "web" ? project.webAuthMode : project.authMode}
+              onChange={(e) => {
+                const v = e.target.value as "subscription" | "api";
+                if (module === "web") changeWebAuthMode(v);
+                else changeAuthMode(v);
+              }}
               className="rounded border border-edge bg-panel px-1 py-0.5 text-[11px] text-gray-200 outline-none"
             >
               <option value="subscription">Max subscription</option>
