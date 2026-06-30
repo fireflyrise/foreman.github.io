@@ -301,6 +301,14 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       returns "noop" (proceed, mark done), one PR accumulates all commits, `maybeMergeAtEnd`
       runs `mergeWhenGreen` once (CI-gated + self-heal), then the Railway deploy check.
 
+- [x] Foreman branding: gold crown logo + favicon. `apps/web/public/logo.svg` (hand-authored
+      gold crown, crisp at any size, doubles as favicon); `index.html` links it as the icon;
+      the Workspace header shows it next to "Foreman" (replaced the ⚙️ emoji). Vite auto-copies
+      `public/` → `dist/` → Docker stages it into the server's `public/`, served at `/logo.svg`.
+      NOTE: user pasted PNGs but a chat-pasted image can't be reconstructed to exact bytes;
+      using an SVG crown so it works immediately. To use the user's EXACT files, drop
+      `apps/web/public/logo.png` + `favicon.png` and switch the two refs.
+
 ## Verification commands
 
 ```bash

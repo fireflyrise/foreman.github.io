@@ -37,7 +37,10 @@ export function Workspace() {
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-edge bg-panel px-4 py-2">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold">⚙️ Foreman</span>
+          <span className="flex items-center gap-1.5 text-sm font-semibold">
+            <img src="/logo.svg" alt="" className="h-6 w-6" />
+            Foreman
+          </span>
           <IntegrationsBar
             integrations={integrationsQuery.data?.integrations ?? []}
             onManage={() => setShowIntegrations(true)}
