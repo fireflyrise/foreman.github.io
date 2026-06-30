@@ -29,11 +29,17 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [lines]);
 
+  // If the persisted session is in a terminal state, trust that over a possibly
+  // stale live-stream status. This matters when the server restarted and lost
+  // the in-memory session: the stream can't emit a "stopped" event, so without
+  // this the Stop button would stay stuck even after the DB row is stopped.
+  const dbStatus = project.activeSession?.status;
+  const dbTerminal = dbStatus === "stopped" || dbStatus === "completed" || dbStatus === "error";
+
   // "idle" is the pre-start / post-completion state — it must show Run, not Stop.
   const running =
-    status === "running" ||
-    status === "awaiting_next" ||
-    status === "limit_paused";
+    !dbTerminal &&
+    (status === "running" || status === "awaiting_next" || status === "limit_paused");
 
   const isWeb = project.projectType === "web";
 

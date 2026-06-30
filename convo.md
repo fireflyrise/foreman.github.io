@@ -373,6 +373,15 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       to just "Fill the brief — it saves automatically." (the prior "Press Generate & build…"
       line was stale).
 
+- [x] Fix "Stop does nothing" for orphaned sessions: after a redeploy kills the in-memory
+      session, the DB row stays "running" and the SSE stream can't emit a "stopped" event, so
+      the Stop button stayed stuck. `AgentConsole` now treats a terminal persisted status
+      (`project.activeSession.status` ∈ stopped/completed/error) as authoritative over a stale
+      live-stream status (`running = !dbTerminal && (running|awaiting_next|limit_paused)`).
+      Combined with `SessionRegistry.stop` marking orphaned rows stopped + the projects refetch
+      on Stop, the button now flips to Run. (Live stops already worked via the snapshot
+      override; this fixes the post-redeploy orphan case.)
+
 ## Verification commands
 
 ```bash
