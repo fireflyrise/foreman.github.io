@@ -171,6 +171,22 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       stage), and explicitly in the `env` object of `AgentSession.buildAuthEnv()` (Module 1
       runs) and `integrations/testSubscription.ts` (the Max-subscription test). After this
       deploys, "Test Max subscription" should go green and Module 1 runs no longer exit 1.
+- [x] Fix "no Run button" in the Agent Console: `AgentConsole.tsx` wrongly counted the
+      `idle` session status as "running", so before a session started (and after one
+      completed) the console showed a red **Stop** button instead of **▶ Run** — there was
+      no way to start. `idle` is the pre-start / post-completion state; removed it from the
+      `running` condition so idle/stopped/completed/error all show **▶ Run**, while
+      running/awaiting_next/limit_paused show **Stop**.
+- [x] Per-tab delete with type-to-confirm: each project tab now has an **✕** button
+      (`ProjectTabs.tsx`). It opens `DeleteProjectDialog.tsx`, which (a) refuses deletion
+      while the project is running — session status in idle/running/awaiting_next/
+      limit_paused — showing "cannot be deleted while it is running", and (b) otherwise
+      requires the user to TYPE the exact project name before the Delete button enables.
+      The server already guards this (DELETE returns 409 "Stop the running session before
+      deleting" via `SessionRegistry.isRunning`); the dialog surfaces that message on 409
+      as a fallback. Removed the redundant top-right "Delete" button from `ProjectView`;
+      deletion is centralized on the tab ✕. `Workspace` clears the active selection when
+      the open project is deleted. Delete does NOT touch the GitHub repo.
 
 ## Verification commands
 

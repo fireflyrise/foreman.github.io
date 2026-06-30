@@ -57,6 +57,9 @@ export function Workspace() {
         projects={projects}
         activeId={active?.id ?? null}
         onSelect={setActiveId}
+        onDeleted={(id) => {
+          if (activeId === id) setActiveId(null);
+        }}
       />
 
       <main className="min-h-0 flex-1 overflow-auto">

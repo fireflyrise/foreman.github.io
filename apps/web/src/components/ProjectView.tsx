@@ -22,16 +22,6 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
     await qc.invalidateQueries({ queryKey: ["projects"] });
   }
 
-  async function del() {
-    if (!confirm(`Delete project "${project.name}"? This does not affect the GitHub repo.`)) return;
-    try {
-      await api.deleteProject(project.id);
-      await qc.invalidateQueries({ queryKey: ["projects"] });
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  }
-
   return (
     <div className="flex h-full flex-col p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -83,9 +73,6 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
               Module 2 · Web
             </button>
           </div>
-          <Button variant="ghost" onClick={del}>
-            Delete
-          </Button>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ProjectDTO } from "@foreman/shared";
 import { api } from "../api/client.js";
+import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
 
 function statusDot(p: ProjectDTO): string {
   const s = p.activeSession?.status;
@@ -16,14 +17,18 @@ export function ProjectTabs({
   projects,
   activeId,
   onSelect,
+  onDeleted,
 }: {
   projects: ProjectDTO[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  onDeleted: (id: string) => void;
 }) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const deleting = projects.find((p) => p.id === deleteId) ?? null;
 
   async function commitRename(id: string) {
     const name = draft.trim();
@@ -72,9 +77,31 @@ export function ProjectTabs({
             ) : (
               <span className="whitespace-nowrap">{p.name}</span>
             )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteId(p.id);
+              }}
+              title="Delete project"
+              aria-label={`Delete ${p.name}`}
+              className="ml-0.5 rounded px-1 text-xs leading-none text-gray-500 hover:bg-red-600/20 hover:text-red-300"
+            >
+              ✕
+            </button>
           </div>
         );
       })}
+
+      {deleting && (
+        <DeleteProjectDialog
+          project={deleting}
+          onClose={() => setDeleteId(null)}
+          onDeleted={(id) => {
+            setDeleteId(null);
+            onDeleted(id);
+          }}
+        />
+      )}
     </div>
   );
 }

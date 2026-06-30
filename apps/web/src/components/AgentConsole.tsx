@@ -29,10 +29,10 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [lines]);
 
+  // "idle" is the pre-start / post-completion state — it must show Run, not Stop.
   const running =
     status === "running" ||
     status === "awaiting_next" ||
-    status === "idle" ||
     status === "limit_paused";
 
   async function start() {
