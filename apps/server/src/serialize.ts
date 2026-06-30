@@ -99,6 +99,7 @@ export function serializeProject(p: ProjectWithRelations): ProjectDTO {
     repoName: p.repoName,
     repoFullName: p.repoFullName,
     defaultBranch: p.defaultBranch,
+    projectType: p.projectType as ProjectDTO["projectType"],
     mergePolicy: p.mergePolicy as MergePolicy,
     authMode: p.authMode as ProjectDTO["authMode"],
     webAuthMode: p.webAuthMode as ProjectDTO["webAuthMode"],

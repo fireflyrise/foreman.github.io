@@ -14,6 +14,9 @@ export type IntegrationProvider = z.infer<typeof IntegrationProvider>;
 export const AuthMode = z.enum(["subscription", "api"]);
 export type AuthMode = z.infer<typeof AuthMode>;
 
+export const ProjectType = z.enum(["software", "web"]);
+export type ProjectType = z.infer<typeof ProjectType>;
+
 export const MergePolicy = z.enum([
   "PER_INSTRUCTION", // merge the session branch after each instruction completes
   "PER_SESSION", // open one PR and merge once at the end of the session
@@ -50,6 +53,7 @@ export interface ProjectDTO {
   repoName: string;
   repoFullName: string;
   defaultBranch: string;
+  projectType: ProjectType;
   mergePolicy: MergePolicy;
   authMode: AuthMode;
   webAuthMode: AuthMode;
@@ -131,6 +135,7 @@ export const CreateProjectInput = z.object({
   repoName: z.string().min(1),
   defaultBranch: z.string().min(1).default("main"),
   name: z.string().min(1).optional(),
+  projectType: ProjectType.default("software"),
 });
 export type CreateProjectInput = z.infer<typeof CreateProjectInput>;
 

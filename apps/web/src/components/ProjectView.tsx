@@ -13,7 +13,9 @@ type Module = "software" | "web";
 
 export function ProjectView({ project }: { project: ProjectDTO }) {
   const qc = useQueryClient();
-  const [module, setModule] = useState<Module>("software");
+  const [module, setModule] = useState<Module>(
+    project.projectType === "web" ? "web" : "software",
+  );
   const [showRailway, setShowRailway] = useState(false);
   const railwaySet = Boolean(project.railwayProjectId);
 

@@ -323,6 +323,15 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       selector from `WebCreatorForm`. It selects which credential the run bills against (Max
       subscription vs pay-as-you-go API key).
 
+- [x] Add Project type-first flow: "+ Add Project" now opens a TYPE picker (two cards):
+      **Software project** — "Create/update full software solutions"; **Web project** —
+      "Create/update full websites based on our internal template". Picking one advances to the
+      repo picker (with a ‹ back button). New `Project.projectType` ("software"|"web", default
+      software, migration `7_project_type`); `ProjectType` zod enum; `CreateProjectInput
+      .projectType`; `ProjectDTO.projectType`; create route + serializer store it; client
+      passes it. `ProjectView` opens to the matching module (web→Module 2, else Module 1) — the
+      module toggle stays so you can still switch.
+
 ## Verification commands
 
 ```bash

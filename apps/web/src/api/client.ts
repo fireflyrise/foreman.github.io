@@ -84,6 +84,7 @@ export const api = {
     repoName: string;
     defaultBranch: string;
     name?: string;
+    projectType?: "software" | "web";
   }) => req<{ project: ProjectDTO }>("POST", "/api/projects", input),
   renameProject: (id: string, name: string) =>
     req<{ project: ProjectDTO }>("PATCH", `/api/projects/${id}`, { name }),

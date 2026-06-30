@@ -4,6 +4,23 @@ import type { ProjectDTO, RepoDTO } from "@foreman/shared";
 import { api, ApiError } from "../api/client.js";
 import { Button, Panel, TextInput } from "./ui.js";
 
+type ProjectType = "software" | "web";
+
+const TYPES: { type: ProjectType; title: string; description: string; emoji: string }[] = [
+  {
+    type: "software",
+    title: "Software project",
+    description: "Create/update full software solutions.",
+    emoji: "🧩",
+  },
+  {
+    type: "web",
+    title: "Web project",
+    description: "Create/update full websites based on our internal template.",
+    emoji: "🌐",
+  },
+];
+
 export function AddProjectDialog({
   onClose,
   onCreated,
@@ -12,6 +29,7 @@ export function AddProjectDialog({
   onCreated: (p: ProjectDTO) => void;
 }) {
   const qc = useQueryClient();
+  const [projectType, setProjectType] = useState<ProjectType | null>(null);
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -40,6 +58,7 @@ export function AddProjectDialog({
         repoOwner: repo.owner,
         repoName: repo.name,
         defaultBranch: repo.defaultBranch,
+        projectType: projectType ?? "software",
       });
       await qc.invalidateQueries({ queryKey: ["projects"] });
       onCreated(project);
@@ -48,11 +67,49 @@ export function AddProjectDialog({
     }
   }
 
+  // Step 1: choose the project type.
+  if (!projectType) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <Panel className="w-[34rem] max-w-full">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Add Project — what are you building?</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-white">
+              ✕
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {TYPES.map((t) => (
+              <button
+                key={t.type}
+                onClick={() => setProjectType(t.type)}
+                className="flex flex-col gap-1 rounded-lg border border-edge bg-ink p-4 text-left transition hover:border-blue-500 hover:bg-edge"
+              >
+                <span className="text-2xl">{t.emoji}</span>
+                <span className="text-sm font-semibold text-white">{t.title}</span>
+                <span className="text-xs text-gray-400">{t.description}</span>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <Panel className="flex h-[32rem] w-[34rem] max-w-full flex-col">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Add Project — choose a repo</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <button
+              onClick={() => setProjectType(null)}
+              className="text-gray-400 hover:text-white"
+              title="Back to project type"
+            >
+              ‹
+            </button>
+            {projectType === "web" ? "Web project" : "Software project"} — choose a repo
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             ✕
           </button>
