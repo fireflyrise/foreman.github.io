@@ -279,6 +279,13 @@ export const WebCreatorInput = z.object({
 });
 export type WebCreatorInput = z.infer<typeof WebCreatorInput>;
 
+/** Lenient variant for autosaving a half-filled form (no required fields). */
+export const WebCreatorDraftInput = WebCreatorInput.extend({
+  companyName: z.string(),
+  industry: z.string(),
+});
+export type WebCreatorDraftInput = z.infer<typeof WebCreatorDraftInput>;
+
 export const LoginInput = z.object({
   username: z.string().min(1),
   password: z.string().min(1),

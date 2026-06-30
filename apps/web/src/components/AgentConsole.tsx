@@ -35,10 +35,15 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
     status === "awaiting_next" ||
     status === "limit_paused";
 
+  const isWeb = project.projectType === "web";
+
   async function start() {
     setError(null);
     try {
-      await api.startSession(project.id);
+      // Web projects generate their build steps from the (autosaved) form and
+      // run them; software projects run the hand-written instruction list.
+      if (isWeb) await api.runWebCreator(project.id);
+      else await api.startSession(project.id);
       setNonce((n) => n + 1);
       void qc.invalidateQueries({ queryKey: ["projects"] });
     } catch (e) {
@@ -100,8 +105,12 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
               Stop
             </Button>
           ) : (
-            <Button onClick={start} disabled={project.instructions.length === 0}>
-              ▶ Run
+            <Button
+              onClick={start}
+              disabled={!isWeb && project.instructions.length === 0}
+              title={isWeb ? "Generate the website from the form and build it" : "Run the instruction list"}
+            >
+              {isWeb ? "▶ Generate & build" : "▶ Run"}
             </Button>
           )}
         </div>

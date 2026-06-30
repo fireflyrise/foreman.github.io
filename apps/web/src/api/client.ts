@@ -161,6 +161,6 @@ export const api = {
   // module 2
   saveWebSpec: (id: string, input: WebCreatorInput) =>
     req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/web-spec`, input),
-  runWebCreator: (id: string, input: WebCreatorInput) =>
-    req<{ ok: boolean }>("POST", `/api/projects/${id}/web-creator/run`, input),
+  runWebCreator: (id: string, input?: WebCreatorInput) =>
+    req<{ ok: boolean }>("POST", `/api/projects/${id}/web-creator/run`, input ?? {}),
 };
