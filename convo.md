@@ -261,6 +261,17 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       lines, view-only); `AgentConsole` has a "Clear" ghost button (disabled when empty).
       Live events keep appending after; a refresh replays persisted history from the DB.
 
+- [x] Serialize instructions on merge (fix: instruction marked done + next started while PR
+      still open → conflicts). `onTurnResult` no longer marks the instruction done before the
+      git step; `handleGitForInstruction`/`mergeWhenGreen` now return an outcome
+      ("merged"|"healing"|"blocked"|"noop"). The instruction is marked **done only after its
+      PR actually merges**; the **next instruction starts only on "merged"/"noop"**. New
+      `mergingInstruction` field tracks the real instruction across synthetic CI-fix sub-steps
+      so it's completed only when its PR lands. On "blocked" (conflict / CI timeout / merge
+      rejected / fixes exhausted) the session STOPS with a clear message instead of starting
+      the next instruction on unmerged work. "healing" (CI red → fix injected) keeps the
+      instruction running and runs the fix before re-merging. Hard turn failure also stops.
+
 ## Verification commands
 
 ```bash

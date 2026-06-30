@@ -95,6 +95,9 @@ export class AgentSession {
   /** Fixed wait after the final merge for Railway to build + deploy (ms). */
   private static readonly DEPLOY_WAIT_MS = 5 * 60 * 1000;
 
+  /** The real instruction whose PR we're trying to land. Survives synthetic
+   *  CI-fix sub-steps so it's marked "done" only once its PR actually merges. */
+  private mergingInstruction: QueuedInstruction | null = null;
   /** How many times we've auto-injected a CI fix for the current PR. */
   private ciFixAttempts = 0;
   /** Cap on automatic CI self-heal rounds before we leave the PR open. */
@@ -370,22 +373,37 @@ export class AgentSession {
       return;
     }
 
-    // Mark the just-finished instruction done.
-    if (instr?.id) {
-      const status = subtype === "success" ? "done" : "failed";
-      await prisma.instruction
-        .update({ where: { id: instr.id }, data: { status, costUsd: cost } })
-        .catch(() => undefined);
-      this.emit({ type: "instruction_status", instructionId: instr.id, status, costUsd: cost });
-    }
     if (this.sessionDbId) {
       await prisma.session
         .update({ where: { id: this.sessionDbId }, data: { totalCostUsd: cost } })
         .catch(() => undefined);
     }
 
-    // Git/PR flow for this instruction.
-    await this.handleGitForInstruction().catch((e) => {
+    // A hard turn failure (the agent's own run errored) — mark failed and stop
+    // rather than building the next instruction on a broken state.
+    if (subtype !== "success") {
+      if (instr?.id) {
+        await prisma.instruction
+          .update({ where: { id: instr.id }, data: { status: "failed", costUsd: cost } })
+          .catch(() => undefined);
+        this.emit({ type: "instruction_status", instructionId: instr.id, status: "failed", costUsd: cost });
+      }
+      this.currentInstruction = null;
+      this.emit({ type: "log", level: "warn", text: "Instruction failed — stopping the run." });
+      await this.stop();
+      return;
+    }
+
+    // Track the real instruction we're trying to land. Synthetic CI-fix
+    // sub-steps (id === null) keep the original instruction as the owner, so it
+    // is marked "done" only once its PR truly merges.
+    if (instr?.id) this.mergingInstruction = instr;
+
+    // Git/PR flow → did the work actually merge to main?
+    let outcome: "merged" | "healing" | "blocked" | "noop";
+    try {
+      outcome = await this.handleGitForInstruction();
+    } catch (e) {
       this.emit({ type: "log", level: "warn", text: `Git/PR step failed: ${(e as Error).message}` });
       void recordError({
         errorType: ErrorType.AGENT_GIT_PR_FAILURE,
@@ -393,9 +411,45 @@ export class AgentSession {
         project: this.projectId,
         context: { branchName: this.branchName, prNumber: this.prNumber, mergePolicy: this.mergePolicy },
       });
-    });
+      outcome = "blocked";
+    }
 
     this.currentInstruction = null;
+
+    // The previous instruction's PR is NOT merged (CI failing, conflict, or
+    // timeout). Do NOT start the next instruction — it would build on unmerged
+    // work and create conflicts. Pause so the PR can be resolved, then re-run.
+    if (outcome === "blocked") {
+      const owner = this.mergingInstruction;
+      if (owner?.id) {
+        await prisma.instruction
+          .update({ where: { id: owner.id }, data: { status: "failed", costUsd: cost } })
+          .catch(() => undefined);
+        this.emit({ type: "instruction_status", instructionId: owner.id, status: "failed", costUsd: cost });
+      }
+      this.emit({
+        type: "log",
+        level: "error",
+        text: `PR #${this.prNumber ?? "?"} did not merge — stopping instead of starting the next instruction (which would conflict). Resolve the PR/CI, then re-run.`,
+      });
+      this.mergingInstruction = null;
+      await this.stop();
+      return;
+    }
+
+    // Merged (or nothing to merge under PER_SESSION/MANUAL) → the owning
+    // instruction is truly complete. "healing" means a CI fix was queued for
+    // the SAME instruction, so leave it marked running and let the fix proceed.
+    if (outcome !== "healing") {
+      const done = this.mergingInstruction;
+      if (done?.id) {
+        await prisma.instruction
+          .update({ where: { id: done.id }, data: { status: "done", costUsd: cost } })
+          .catch(() => undefined);
+        this.emit({ type: "instruction_status", instructionId: done.id, status: "done", costUsd: cost });
+      }
+      this.mergingInstruction = null;
+    }
 
     // Cost ceiling.
     if (this.totalCostUsd >= env.sessionCostLimitUsd) {
@@ -411,12 +465,19 @@ export class AgentSession {
     this.sendNext();
   }
 
-  /** Open a PR (once) and merge per the configured policy. */
-  private async handleGitForInstruction(): Promise<void> {
-    if (this.mergePolicy === "MANUAL") return;
+  /**
+   * Open a PR (once) and merge per the configured policy. Returns:
+   *  - "merged"  — the work landed on main (safe to start the next instruction)
+   *  - "healing" — CI failed; a fix sub-step was queued for the SAME instruction
+   *  - "blocked" — PR could not be merged (conflict/timeout/exhausted) — caller
+   *                must NOT start the next instruction
+   *  - "noop"    — nothing to merge here (MANUAL, PER_SESSION per-step, no commits)
+   */
+  private async handleGitForInstruction(): Promise<"merged" | "healing" | "blocked" | "noop"> {
+    if (this.mergePolicy === "MANUAL") return "noop";
     const [owner, repo] = await this.repoFullName();
     const hasCommits = await this.repo.hasCommitsAhead(this.branchName);
-    if (!hasCommits) return;
+    if (!hasCommits) return "noop";
 
     // Ensure branch is pushed (agent should have pushed, but be safe).
     await this.repo.push(this.branchName).catch(() => undefined);
@@ -441,18 +502,23 @@ export class AgentSession {
     }
 
     if (this.mergePolicy === "PER_INSTRUCTION" && this.prNumber !== null) {
-      await this.mergeWhenGreen(owner, repo, this.prNumber);
+      return this.mergeWhenGreen(owner, repo, this.prNumber);
     }
+    return "noop"; // PER_SESSION merges once at the end.
   }
 
   /**
-   * Wait for a PR's CI to finish, then merge it. On green → squash-merge and
-   * clear the PR pointer. On red → inject a fix instruction (self-heal) and
-   * leave the PR open; the agent repairs it and CI re-runs. On conflict /
-   * timeout / repeated failure → leave the PR open with a clear log so it can
-   * be handled manually instead of merging broken code.
+   * Wait for a PR's CI to finish, then merge it.
+   *  - green → squash-merge, clear the PR pointer → "merged".
+   *  - red → inject a CI-fix sub-step (bounded) → "healing"; or, once attempts
+   *    are exhausted, leave it open → "blocked".
+   *  - conflict / timeout / merge-rejected → leave it open → "blocked".
    */
-  private async mergeWhenGreen(owner: string, repo: string, prNumber: number): Promise<void> {
+  private async mergeWhenGreen(
+    owner: string,
+    repo: string,
+    prNumber: number,
+  ): Promise<"merged" | "healing" | "blocked"> {
     const verdict = await this.waitForPrReady(owner, repo, prNumber);
 
     if (verdict === "green") {
@@ -461,14 +527,15 @@ export class AgentSession {
         this.emit({ type: "git", action: "merge", detail: `Merged PR #${prNumber} into main` });
         this.prNumber = null; // next instruction opens a fresh PR off updated main
         this.ciFixAttempts = 0;
+        return "merged";
       } catch (e) {
         this.emit({
           type: "log",
           level: "warn",
           text: `PR #${prNumber} passed CI but the merge was rejected (${(e as Error).message}). Leaving it open.`,
         });
+        return "blocked";
       }
-      return;
     }
 
     if (verdict.kind === "red") {
@@ -482,14 +549,14 @@ export class AgentSession {
         // Run the fix BEFORE any remaining queued instruction.
         this.queue.unshift({ id: null, text: buildCiFixMessage(verdict.failures) });
         this.total += 1;
-      } else {
-        this.emit({
-          type: "log",
-          level: "warn",
-          text: `PR #${prNumber} CI still failing after ${AgentSession.MAX_CI_FIX} fix attempts — leaving it open for manual review.`,
-        });
+        return "healing";
       }
-      return;
+      this.emit({
+        type: "log",
+        level: "warn",
+        text: `PR #${prNumber} CI still failing after ${AgentSession.MAX_CI_FIX} fix attempts — leaving it open for manual review.`,
+      });
+      return "blocked";
     }
 
     // conflict | timeout — don't merge broken/unverified code.
@@ -501,6 +568,7 @@ export class AgentSession {
           ? `PR #${prNumber} has a merge conflict — leaving it open for manual resolution.`
           : `PR #${prNumber} CI didn't finish within the wait window — leaving it open.`,
     });
+    return "blocked";
   }
 
   /** Poll a PR until its CI settles or we time out. */
@@ -612,10 +680,10 @@ export class AgentSession {
   private async maybeMergeAtEnd(): Promise<void> {
     if (this.mergePolicy === "PER_SESSION" && this.prNumber !== null) {
       const [owner, repo] = await this.repoFullName();
-      await this.mergeWhenGreen(owner, repo, this.prNumber);
+      const outcome = await this.mergeWhenGreen(owner, repo, this.prNumber);
       // If CI failed and a fix was queued, resume the loop to repair it instead
       // of finalizing — it will come back here once the fix lands.
-      if (this.queue.length > 0) {
+      if (outcome === "healing") {
         this.sendNext();
         return;
       }
