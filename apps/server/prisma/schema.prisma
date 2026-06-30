@@ -23,6 +23,9 @@ model Project {
   repoOwner            String
   repoName             String
   repoFullName         String
+  // "software" (Module 1) or "web" (Module 2) — chosen when the project is added;
+  // determines which module screen opens by default.
+  projectType          String           @default("software")
   defaultBranch        String           @default("main")
   // Default: merge once after ALL instructions complete (PER_SESSION).
   mergePolicy          String           @default("PER_SESSION")

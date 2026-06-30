@@ -53,7 +53,7 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
   app.post("/api/projects", async (req, reply) => {
     const parsed = CreateProjectInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
-    const { repoOwner, repoName, defaultBranch, name } = parsed.data;
+    const { repoOwner, repoName, defaultBranch, name, projectType } = parsed.data;
     const project = await prisma.project.create({
       data: {
         userId: getUserId(req),
@@ -62,6 +62,7 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
         repoName,
         repoFullName: `${repoOwner}/${repoName}`,
         defaultBranch,
+        projectType,
         goal: { create: {} },
       },
       include: projectInclude,
