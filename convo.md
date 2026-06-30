@@ -354,6 +354,14 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       instructions before reseeding so re-running never appends duplicates. Run button shows
       "▶ Generate & build" on web (enabled even with 0 instructions) and "▶ Run" on software.
 
+- [x] Clean up session branches. New `deleteBranch(userId, owner, repo, branch)` in
+      `integrations/github.js` (git.deleteRef, best-effort). (1) **Project delete** route now
+      deletes every `Session.branchName` for the project from the repo before removing the
+      project. (2) **Session finalize** deletes the session branch once everything's merged
+      (`prNumber === null`) and the policy isn't MANUAL (which intentionally leaves the PR +
+      branch open). A stopped session with an open PR keeps its branch. So the tool's
+      `session/<slug>/<ts>` branches don't pile up.
+
 ## Verification commands
 
 ```bash

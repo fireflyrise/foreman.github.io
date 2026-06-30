@@ -18,6 +18,7 @@ import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
 import { serializeProject } from "../serialize.js";
 import { saveWebSpec } from "../webspec.js";
+import { deleteBranch } from "../integrations/github.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
 
 const projectInclude = {
@@ -145,6 +146,18 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
     if (!existing) return reply.code(404).send({ error: "Not found" });
     if (SessionRegistry.isRunning(id)) {
       return reply.code(409).send({ error: "Stop the running session before deleting." });
+    }
+    // Delete the session branches Foreman created in the repo — no reason to
+    // leave them behind once the project is gone. Best-effort.
+    const sessions = await prisma.session.findMany({
+      where: { projectId: id },
+      select: { branchName: true },
+    });
+    const branches = [...new Set(sessions.map((s) => s.branchName).filter(Boolean))];
+    for (const branch of branches) {
+      await deleteBranch(getUserId(req), existing.repoOwner, existing.repoName, branch).catch(
+        () => undefined,
+      );
     }
     await prisma.project.delete({ where: { id } });
     return { ok: true };
