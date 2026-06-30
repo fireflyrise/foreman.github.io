@@ -171,6 +171,12 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       stage), and explicitly in the `env` object of `AgentSession.buildAuthEnv()` (Module 1
       runs) and `integrations/testSubscription.ts` (the Max-subscription test). After this
       deploys, "Test Max subscription" should go green and Module 1 runs no longer exit 1.
+- [x] Fix "no Run button" in the Agent Console: `AgentConsole.tsx` wrongly counted the
+      `idle` session status as "running", so before a session started (and after one
+      completed) the console showed a red **Stop** button instead of **▶ Run** — there was
+      no way to start. `idle` is the pre-start / post-completion state; removed it from the
+      `running` condition so idle/stopped/completed/error all show **▶ Run**, while
+      running/awaiting_next/limit_paused show **Stop**.
 
 ## Verification commands
 
