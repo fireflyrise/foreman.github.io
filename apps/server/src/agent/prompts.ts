@@ -66,6 +66,14 @@ export function buildRailwayFixMessage(status: string, logs: string): string {
   return `The latest Railway deployment is in state "${status}". Here are the most recent build/runtime logs:\n\n${logs}\n\nDiagnose the root cause and fix it in the codebase. Commit and push the fix, then stop.`;
 }
 
+/** Synthetic instruction injected when the open PR's CI checks fail. */
+export function buildCiFixMessage(failures: Array<{ name: string; summary: string }>): string {
+  const list = failures
+    .map((f) => `- ${f.name}: ${f.summary}`)
+    .join("\n");
+  return `The CI checks on the open pull request for your work FAILED, so it cannot be merged yet. Failing checks:\n\n${list}\n\nReproduce the failure locally if you can, diagnose the root cause, and fix it in the codebase. Commit and push the fix to the current branch, then stop — CI will re-run automatically.`;
+}
+
 function line(label: string, value: unknown): string {
   if (value === undefined || value === null || value === "") return "";
   if (Array.isArray(value)) {
