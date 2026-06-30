@@ -390,6 +390,13 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       checking a box adds it to `f.services` (which also feeds the existing textarea), unchecking
       removes it. `SuggestServicesInput` (industry required) + `api.suggestServices`.
 
+- [x] Console Run button label is now "▶ Run" for BOTH software and web projects (was
+      "▶ Generate & build" on web) — consistent UX per user. Web behavior unchanged (Run still
+      generates the site from the autosaved brief + builds); only the label changed. NOTE: the
+      recurring "stuck" web build is mostly the redeploy-kills-the-running-session churn — every
+      merged PR restarts Foreman and ends the in-progress build. Pause shipping to let a build
+      finish.
+
 ## Verification commands
 
 ```bash
