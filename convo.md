@@ -272,6 +272,12 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       the next instruction on unmerged work. "healing" (CI red → fix injected) keeps the
       instruction running and runs the fix before re-merging. Hard turn failure also stops.
 
+- [x] Live instruction-badge updates: the console streamed in real time but the instruction
+      status badges (running→done) only updated on refetch/refresh, since `InstructionList`
+      reads from the cached `["projects"]` query. `useAgentStream` now patches that cache on
+      every `instruction_status` SSE event (`patchInstructionStatus` via `qc.setQueryData`),
+      so badges flip live without a refresh.
+
 ## Verification commands
 
 ```bash
