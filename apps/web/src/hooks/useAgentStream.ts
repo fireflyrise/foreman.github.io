@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentEvent } from "@foreman/shared";
+import { useQueryClient } from "@tanstack/react-query";
+import type { AgentEvent, ProjectDTO } from "@foreman/shared";
 
 export interface ConsoleLine {
   key: string;
@@ -57,11 +58,43 @@ function truncate(s: string, n = 160): string {
   return s.length > n ? `${s.slice(0, n)}…` : s;
 }
 
+type ProjectsCache = { projects: ProjectDTO[] } | undefined;
+
+/** Patch the cached projects list so an instruction's badge updates live,
+ *  without waiting for a refetch. */
+function patchInstructionStatus(
+  qc: ReturnType<typeof useQueryClient>,
+  projectId: string,
+  instructionId: string,
+  status: ProjectDTO["instructions"][number]["status"],
+  costUsd?: number,
+): void {
+  qc.setQueryData(["projects"], (old: ProjectsCache): ProjectsCache => {
+    if (!old) return old;
+    return {
+      ...old,
+      projects: old.projects.map((p) =>
+        p.id !== projectId
+          ? p
+          : {
+              ...p,
+              instructions: p.instructions.map((i) =>
+                i.id === instructionId
+                  ? { ...i, status, costUsd: costUsd ?? i.costUsd }
+                  : i,
+              ),
+            },
+      ),
+    };
+  });
+}
+
 /**
  * Subscribes to a project's SSE agent stream. Returns rendered console lines and
  * the latest session status. Re-subscribes when `projectId` or `nonce` changes.
  */
 export function useAgentStream(projectId: string | null, nonce: number) {
+  const qc = useQueryClient();
   const [lines, setLines] = useState<ConsoleLine[]>([]);
   const [status, setStatus] = useState<string>("idle");
   const counter = useRef(0);
@@ -79,6 +112,11 @@ export function useAgentStream(projectId: string | null, nonce: number) {
         try {
           const event = JSON.parse(e.data) as AgentEvent;
           if (event.type === "session_status") setStatus(event.status);
+          // Keep the instruction badges in sync live (the list is otherwise
+          // only refreshed on refetch/refresh).
+          if (event.type === "instruction_status") {
+            patchInstructionStatus(qc, projectId, event.instructionId, event.status, event.costUsd);
+          }
           const text = render(event);
           if (text !== null) {
             counter.current += 1;
@@ -101,7 +139,7 @@ export function useAgentStream(projectId: string | null, nonce: number) {
       }
       source.close();
     };
-  }, [projectId, nonce]);
+  }, [projectId, nonce, qc]);
 
   // Clear only the on-screen lines (view-only; a refresh replays history).
   const clear = useCallback(() => setLines([]), []);
