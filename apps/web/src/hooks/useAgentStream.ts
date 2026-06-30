@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentEvent } from "@foreman/shared";
 
 export interface ConsoleLine {
@@ -103,5 +103,8 @@ export function useAgentStream(projectId: string | null, nonce: number) {
     };
   }, [projectId, nonce]);
 
-  return { lines, status };
+  // Clear only the on-screen lines (view-only; a refresh replays history).
+  const clear = useCallback(() => setLines([]), []);
+
+  return { lines, status, clear };
 }
