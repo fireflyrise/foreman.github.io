@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
 import {
   DEFAULT_WEB_GOAL,
@@ -97,11 +96,10 @@ function Check({
 }
 
 export function WebCreatorForm({ project }: { project: ProjectDTO }) {
-  const qc = useQueryClient();
   const [f, setF] = useState<WebCreatorInput>(() => initialForm(project));
-  const [busy, setBusy] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
   function up<K extends keyof WebCreatorInput>(key: K, value: WebCreatorInput[K]) {
     setF((prev) => ({ ...prev, [key]: value }));
@@ -167,53 +165,37 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
     };
   }
 
-  async function run() {
-    if (!valid) return;
-    setBusy(true);
-    setMsg(null);
-    try {
-      await api.runWebCreator(project.id, buildPayload());
-      setMsg("Website build started — watch the Agent Console.");
-      void qc.invalidateQueries({ queryKey: ["projects"] });
-    } catch (e) {
-      setMsg((e as Error).message);
-    } finally {
-      setBusy(false);
+  // Autosave the brief as you type (debounced). No save button needed.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
     }
-  }
-
-  async function saveOnly() {
-    setBusy(true);
-    setMsg(null);
-    try {
-      await api.saveWebSpec(project.id, buildPayload());
-      setMsg("Saved.");
-      void qc.invalidateQueries({ queryKey: ["projects"] });
-    } catch (e) {
-      setMsg((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+    setSaveState("saving");
+    const t = setTimeout(() => {
+      api
+        .saveWebSpec(project.id, buildPayload())
+        .then(() => setSaveState("saved"))
+        .catch(() => setSaveState("idle"));
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f, project.id]);
 
   return (
     <Panel className="overflow-auto">
       <div className="sticky -top-4 z-10 -mx-4 -mt-4 mb-3 border-b border-edge bg-panel/95 px-4 pb-3 pt-4 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">Web Creator</h3>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={saveOnly} disabled={busy}>
-              Save draft
-            </Button>
-            <Button onClick={run} disabled={!valid || busy}>
-              {busy ? "Starting…" : "▶ Generate & build"}
-            </Button>
-          </div>
+          <span className="text-[11px] text-gray-500">
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved ✓" : "Autosaves"}
+          </span>
         </div>
         <p className="mt-1 text-[11px] text-gray-400">
-          Fill the brief, then <span className="text-gray-200">Generate &amp; build</span> — it
-          seeds the build steps and <span className="text-gray-200">starts the run immediately</span>{" "}
-          (watch the Agent Console). “Save draft” stores the brief without running.
+          Fill the brief — it saves automatically. Press{" "}
+          <span className="text-gray-200">▶ Generate &amp; build</span> in the Agent Console to
+          build and launch the site.
         </p>
         {msg && <p className="mt-1 text-[11px] text-amber-300">{msg}</p>}
         {!valid && (

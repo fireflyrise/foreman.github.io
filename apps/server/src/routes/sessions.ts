@@ -55,27 +55,41 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     "/api/projects/:id/web-creator/run",
     { preHandler: requireAuth },
     async (req, reply) => {
-      const parsed = WebCreatorInput.safeParse(req.body);
-      if (!parsed.success) {
-        return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
-      }
       const { id } = req.params as { id: string };
       const project = await prisma.project.findFirst({ where: { id, userId: getUserId(req) } });
       if (!project) return reply.code(404).send({ error: "Not found" });
 
-      const spec = parsed.data as WebCreatorInputType;
-      await saveWebSpec(id, spec);
+      if (SessionRegistry.isRunning(id)) {
+        return reply.code(409).send({ error: "A session is already running for this project." });
+      }
+
+      // Use the posted spec if provided; otherwise fall back to the autosaved
+      // spec (the form saves as you type, so the console Run needs no payload).
+      let spec: WebCreatorInputType;
+      const body = WebCreatorInput.safeParse(req.body);
+      if (body.success) {
+        spec = body.data;
+        await saveWebSpec(id, spec);
+      } else {
+        const stored = await prisma.webCreatorSpec.findUnique({ where: { projectId: id } });
+        const fromStore = stored?.details ? WebCreatorInput.safeParse(stored.details) : null;
+        if (!fromStore?.success) {
+          return reply.code(400).send({
+            error:
+              "Fill in the web form first — company name, industry, and a primary color are required.",
+          });
+        }
+        spec = fromStore.data;
+      }
 
       // Drop the full playbook where the agent can read it (outside the repo).
       const playbookPath = writePlaybookForProject(id);
 
-      // Seed instruction list with the website build steps.
+      // (Re)seed the instruction list — replace any prior generated steps so
+      // re-running never appends duplicates.
       const steps = buildWebCreatorInstructions(spec, playbookPath);
-      const max = await prisma.instruction.aggregate({
-        where: { projectId: id },
-        _max: { order: true },
-      });
-      let order = (max._max.order ?? -1) + 1;
+      await prisma.instruction.deleteMany({ where: { projectId: id } });
+      let order = 0;
       for (const text of steps) {
         await prisma.instruction.create({ data: { projectId: id, order: order++, text } });
       }

@@ -343,6 +343,17 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       `api.runWebCreator` which seeds instructions + starts the session). Removed the old
       bottom action block.
 
+- [x] Web projects: single Run control + autosave (per user: "the console Run does everything;
+      no extra button; the project should auto-save; no Save draft"). The Web Creator form now
+      AUTOSAVES (debounced 700ms → `PUT /web-spec`, lenient `WebCreatorDraftInput` so half-filled
+      drafts persist) with a "Saving…/Saved ✓" indicator; removed the "Generate & build" and
+      "Save draft" buttons + `run`/`saveOnly`. The console **Run** is the one control: for web
+      projects `AgentConsole.start()` calls `api.runWebCreator(id)` (no payload). The
+      `/web-creator/run` route now: 409s if already running, uses the posted spec OR falls back
+      to the autosaved stored spec (400 if required fields missing), and `deleteMany` existing
+      instructions before reseeding so re-running never appends duplicates. Run button shows
+      "▶ Generate & build" on web (enabled even with 0 instructions) and "▶ Run" on software.
+
 ## Verification commands
 
 ```bash

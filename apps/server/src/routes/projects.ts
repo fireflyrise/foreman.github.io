@@ -12,6 +12,7 @@ import {
   SetProjectRailwayInput,
   UpdateGoalInput,
   WebCreatorInput,
+  WebCreatorDraftInput,
 } from "@foreman/shared";
 import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
@@ -265,7 +266,8 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
 
   // ─── Web Creator spec ──────────────────────────────────────────────────────
   app.put("/api/projects/:id/web-spec", async (req, reply) => {
-    const parsed = WebCreatorInput.safeParse(req.body);
+    // Lenient: autosave may persist a half-filled draft (no required fields).
+    const parsed = WebCreatorDraftInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
     const { id } = req.params as { id: string };
     const existing = await loadProject(getUserId(req), id);
