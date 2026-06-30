@@ -4,7 +4,7 @@ import { ResolveLimitInput, WebCreatorInput, SuggestServicesInput } from "@forem
 import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
 import { saveWebSpec } from "../webspec.js";
-import { suggestServices } from "../integrations/suggestServices.js";
+import { suggestServices, suggestLogoColor } from "../integrations/suggestServices.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
 import { buildWebCreatorInstructions } from "../agent/prompts.js";
 import { writePlaybookForProject, materializeWebAssets } from "../agent/webCreatorPlaybook.js";
@@ -140,6 +140,22 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       try {
         const services = await suggestServices(parsed.data);
         return { services };
+      } catch (e) {
+        return reply.code(400).send({ error: (e as Error).message });
+      }
+    },
+  );
+
+  // AI: pick the brand color from the logo (vision).
+  app.post(
+    "/api/projects/:id/web-creator/suggest-colors",
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const body = req.body as { logoUrl?: string };
+      if (!body?.logoUrl) return reply.code(400).send({ error: "No logo provided." });
+      try {
+        const primary = await suggestLogoColor(body.logoUrl);
+        return { primary };
       } catch (e) {
         return reply.code(400).send({ error: (e as Error).message });
       }

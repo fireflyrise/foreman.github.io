@@ -26,7 +26,8 @@ export async function suggestServices(input: SuggestInput): Promise<string[]> {
     (loc ? ` based in ${loc}` : "") +
     `, list the services this type of business most commonly sells to customers. ` +
     `Order them from MOST profitable / highest-margin and highest-demand to LEAST. ` +
-    `Return ONLY a JSON array of 8–14 short service names (2–4 words each), most profitable first. ` +
+    `Return ONLY a JSON array of 10–20 short service names (2–4 words each), most profitable first ` +
+    `(fewer is fine if the industry genuinely has fewer distinct services). ` +
     `No prose, no markdown, no code fences.`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -51,6 +52,61 @@ export async function suggestServices(input: SuggestInput): Promise<string[]> {
   const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
   const text = (data.content ?? []).map((c) => c.text ?? "").join("");
   return parseServiceList(text);
+}
+
+/**
+ * Look at a logo image and return its dominant brand color as a hex string.
+ * Uses the Anthropic vision API (the API key). The hover shade is derived from
+ * this client-side (a lighter tint), per the convention.
+ */
+export async function suggestLogoColor(logoDataUrl: string): Promise<string> {
+  if (!env.anthropicApiKey) {
+    throw new Error("Anthropic API key is not set — add it to match colors to the logo.");
+  }
+  const m = /^data:([^;]+);base64,(.*)$/s.exec(logoDataUrl);
+  const mediaType = m?.[1];
+  const b64 = m?.[2];
+  if (!mediaType || !b64) {
+    throw new Error("A logo image must be uploaded/generated first.");
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": env.anthropicApiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: env.suggestModel,
+      max_tokens: 64,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+            {
+              type: "text",
+              text:
+                "This is a company logo. Reply with ONLY the single dominant brand color as a 6-digit hex code " +
+                "like #1A2B3C — the main color of the mark itself. Ignore any white/black/transparent background. " +
+                "No words, just the hex.",
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Anthropic error ${res.status}: ${body.slice(0, 200)}`);
+  }
+  const data = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
+  const text = (data.content ?? []).map((c) => c.text ?? "").join("");
+  const hex = /#?([0-9a-fA-F]{6})\b/.exec(text)?.[1];
+  if (!hex) throw new Error("Could not read a color from the logo.");
+  return `#${hex.toLowerCase()}`;
 }
 
 function parseServiceList(text: string): string[] {
@@ -85,5 +141,5 @@ function dedupe(items: string[]): string[] {
       out.push(item);
     }
   }
-  return out.slice(0, 16);
+  return out.slice(0, 20);
 }
