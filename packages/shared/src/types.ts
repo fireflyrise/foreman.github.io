@@ -52,6 +52,7 @@ export interface ProjectDTO {
   defaultBranch: string;
   mergePolicy: MergePolicy;
   authMode: AuthMode;
+  webAuthMode: AuthMode;
   railwayProjectId: string | null;
   railwayServiceId: string | null;
   railwayEnvironmentId: string | null;
@@ -273,6 +274,12 @@ export const SetAuthModeInput = z.object({
   authMode: AuthMode,
 });
 export type SetAuthModeInput = z.infer<typeof SetAuthModeInput>;
+
+/** Set the Web Creator (Module 2) auth mode. */
+export const SetWebAuthModeInput = z.object({
+  webAuthMode: AuthMode,
+});
+export type SetWebAuthModeInput = z.infer<typeof SetWebAuthModeInput>;
 
 /** Per-project Railway target (overrides the account-wide defaults). */
 export const SetProjectRailwayInput = z.object({

@@ -6,6 +6,7 @@ import {
   RenameProjectInput,
   ReorderInstructionsInput,
   SetAuthModeInput,
+  SetWebAuthModeInput,
   SetProjectRailwayInput,
   UpdateGoalInput,
   WebCreatorInput,
@@ -83,6 +84,18 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
     const existing = await loadProject(getUserId(req), id);
     if (!existing) return reply.code(404).send({ error: "Not found" });
     await prisma.project.update({ where: { id }, data: { authMode: parsed.data.authMode } });
+    const project = await loadProject(getUserId(req), id);
+    return { project: serializeProject(project!) };
+  });
+
+  // Set the Web Creator (Module 2) auth mode (API key vs Max subscription).
+  app.put("/api/projects/:id/web-auth-mode", async (req, reply) => {
+    const parsed = SetWebAuthModeInput.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
+    const { id } = req.params as { id: string };
+    const existing = await loadProject(getUserId(req), id);
+    if (!existing) return reply.code(404).send({ error: "Not found" });
+    await prisma.project.update({ where: { id }, data: { webAuthMode: parsed.data.webAuthMode } });
     const project = await loadProject(getUserId(req), id);
     return { project: serializeProject(project!) };
   });

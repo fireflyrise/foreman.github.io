@@ -38,7 +38,7 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
           <span className="text-[11px] text-gray-500">merge: {project.mergePolicy}</span>
           <label
             className="flex items-center gap-1 text-[11px] text-gray-500"
-            title="Which credential the Software Creator (Module 1) bills against. Web Creator always uses the API key."
+            title="Which credential the Software Creator (Module 1) bills against. Web Creator (Module 2) has its own auth setting in that tab."
           >
             software auth:
             <select

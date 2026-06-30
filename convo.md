@@ -187,6 +187,14 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       as a fallback. Removed the redundant top-right "Delete" button from `ProjectView`;
       deletion is centralized on the tab ✕. `Workspace` clears the active selection when
       the open project is deleted. Delete does NOT touch the GitHub repo.
+- [x] Per-module billing auth, both directions: Module 1 (Software) already had a Max/API
+      dropdown defaulting to **Max subscription**. Module 2 (Web) used to be hardcoded to the
+      API key; it now has its OWN dropdown (`webAuthMode`, new `Project` column, default
+      **api**) in the Web Creator form, so the owner can flip a project's site build to the
+      Max subscription for their own web apps while client work stays on the API key.
+      New: `Project.webAuthMode` + migration `4_add_web_auth_mode`, `SetWebAuthModeInput`,
+      `ProjectDTO.webAuthMode`, PUT `/api/projects/:id/web-auth-mode`, `api.setWebAuthMode`,
+      and the web-creator run now reads `project.webAuthMode` instead of forcing "api".
 
 ## Verification commands
 
