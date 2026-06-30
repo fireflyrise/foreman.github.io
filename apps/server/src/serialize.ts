@@ -10,6 +10,7 @@ import { WebCreatorInput } from "@foreman/shared";
 import type {
   Goal,
   Instruction,
+  InstructionAttachment,
   Project,
   Session,
   WebCreatorSpec,
@@ -26,13 +27,21 @@ export function serializeGoal(goal: Goal | null): GoalDTO | null {
   };
 }
 
-export function serializeInstruction(i: Instruction): InstructionDTO {
+export function serializeInstruction(
+  i: Instruction & { attachments?: InstructionAttachment[] },
+): InstructionDTO {
   return {
     id: i.id,
     order: i.order,
     text: i.text,
     status: i.status as InstructionDTO["status"],
     costUsd: i.costUsd,
+    // Metadata only — never ship the base64 payload to the list view.
+    attachments: (i.attachments ?? []).map((a) => ({
+      id: a.id,
+      filename: a.filename,
+      mimeType: a.mimeType,
+    })),
   };
 }
 
@@ -68,7 +77,7 @@ export function serializeWebSpec(w: WebCreatorSpec | null): WebCreatorSpecDTO | 
 
 type ProjectWithRelations = Project & {
   goal: Goal | null;
-  instructions: Instruction[];
+  instructions: Array<Instruction & { attachments?: InstructionAttachment[] }>;
   sessions: Session[];
   webSpec: WebCreatorSpec | null;
 };

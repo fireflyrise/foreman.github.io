@@ -126,6 +126,21 @@ export const api = {
       `/api/projects/${id}/instructions/reorder`,
       { orderedIds },
     ),
+  addAttachment: (
+    id: string,
+    instrId: string,
+    file: { filename: string; mimeType: string; dataBase64: string },
+  ) =>
+    req<{ project: ProjectDTO }>(
+      "POST",
+      `/api/projects/${id}/instructions/${instrId}/attachments`,
+      file,
+    ),
+  deleteAttachment: (id: string, instrId: string, attId: string) =>
+    req<{ project: ProjectDTO }>(
+      "DELETE",
+      `/api/projects/${id}/instructions/${instrId}/attachments/${attId}`,
+    ),
 
   // sessions
   startSession: (id: string) =>

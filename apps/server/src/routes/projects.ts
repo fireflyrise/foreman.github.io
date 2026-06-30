@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import {
+  AddAttachmentInput,
   AddInstructionInput,
   CreateProjectInput,
   EditInstructionInput,
@@ -19,7 +20,10 @@ import { SessionRegistry } from "../agent/SessionRegistry.js";
 
 const projectInclude = {
   goal: true,
-  instructions: { orderBy: { order: "asc" as const } },
+  instructions: {
+    orderBy: { order: "asc" as const },
+    include: { attachments: { orderBy: { createdAt: "asc" as const } } },
+  },
   sessions: { orderBy: { startedAt: "desc" as const }, take: 1 },
   webSpec: true,
 };
@@ -188,6 +192,44 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
     const project = await loadProject(getUserId(req), id);
     return { project: serializeProject(project!) };
   });
+
+  // Attach a file/photo to an instruction.
+  app.post("/api/projects/:id/instructions/:instrId/attachments", async (req, reply) => {
+    const parsed = AddAttachmentInput.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
+    const { id, instrId } = req.params as { id: string; instrId: string };
+    const instr = await prisma.instruction.findFirst({ where: { id: instrId, projectId: id } });
+    if (!instr) return reply.code(404).send({ error: "Not found" });
+    await prisma.instructionAttachment.create({
+      data: {
+        instructionId: instrId,
+        filename: parsed.data.filename,
+        mimeType: parsed.data.mimeType,
+        data: parsed.data.dataBase64,
+      },
+    });
+    const project = await loadProject(getUserId(req), id);
+    return { project: serializeProject(project!) };
+  });
+
+  // Remove an attachment from an instruction.
+  app.delete(
+    "/api/projects/:id/instructions/:instrId/attachments/:attId",
+    async (req, reply) => {
+      const { id, instrId, attId } = req.params as {
+        id: string;
+        instrId: string;
+        attId: string;
+      };
+      const instr = await prisma.instruction.findFirst({ where: { id: instrId, projectId: id } });
+      if (!instr) return reply.code(404).send({ error: "Not found" });
+      await prisma.instructionAttachment.deleteMany({
+        where: { id: attId, instructionId: instrId },
+      });
+      const project = await loadProject(getUserId(req), id);
+      return { project: serializeProject(project!) };
+    },
+  );
 
   app.put("/api/projects/:id/instructions/reorder", async (req, reply) => {
     const parsed = ReorderInstructionsInput.safeParse(req.body);

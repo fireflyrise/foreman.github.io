@@ -70,12 +70,19 @@ export interface GoalDTO {
   updatedAt: string;
 }
 
+export interface InstructionAttachmentDTO {
+  id: string;
+  filename: string;
+  mimeType: string;
+}
+
 export interface InstructionDTO {
   id: string;
   order: number;
   text: string;
   status: InstructionStatus;
   costUsd: number | null;
+  attachments: InstructionAttachmentDTO[];
 }
 
 export interface SessionDTO {
@@ -153,6 +160,14 @@ export const ReorderInstructionsInput = z.object({
   orderedIds: z.array(z.string()).min(1),
 });
 export type ReorderInstructionsInput = z.infer<typeof ReorderInstructionsInput>;
+
+/** Attach a file/photo to an instruction (base64, no data: prefix). ~20MB cap. */
+export const AddAttachmentInput = z.object({
+  filename: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(150),
+  dataBase64: z.string().min(1).max(28_000_000),
+});
+export type AddAttachmentInput = z.infer<typeof AddAttachmentInput>;
 
 export const SaveRailwayInput = z.object({
   token: z.string().min(1),

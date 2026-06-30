@@ -55,8 +55,10 @@ export function buildInstructionMessage(
   text: string,
   index: number,
   total: number,
+  attachmentsNote = "",
 ): string {
-  return `Instruction ${index + 1} of ${total}:\n\n${text}\n\nComplete this instruction fully, commit and push your work, then stop.`;
+  const extra = attachmentsNote ? `\n\n${attachmentsNote}` : "";
+  return `Instruction ${index + 1} of ${total}:\n\n${text}${extra}\n\nComplete this instruction fully, commit and push your work, then stop.`;
 }
 
 /** Synthetic instruction injected when a Railway deploy fails. */

@@ -1,3 +1,5 @@
+import path from "node:path";
+import fs from "node:fs";
 import { query, type Query, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentEvent, AuthMode, SessionStatus } from "@foreman/shared";
 import { prisma } from "../db.js";
@@ -446,7 +448,30 @@ export class AgentSession {
         .update({ where: { id: next.id }, data: { status: "running" } })
         .catch(() => undefined);
     }
-    const message = buildInstructionMessage(next.text, this.sentCount, this.total);
+    void this.dispatchInstruction(next);
+  }
+
+  /** Build and push the user message for an instruction, after staging any
+   *  attached files to disk. Order is preserved because the consume loop only
+   *  calls sendNext again after the prior turn's `result`. */
+  private async dispatchInstruction(next: QueuedInstruction): Promise<void> {
+    let note = "";
+    if (next.id) {
+      try {
+        const files = await this.materializeAttachments(next.id);
+        if (files.length) {
+          note =
+            "Attached files for this instruction (absolute paths on disk — NOT in the git repo):\n" +
+            files.map((f) => `- ${f.path} (${f.mimeType})`).join("\n") +
+            "\nRead them with your file tools and use them exactly as the instruction directs. " +
+            "If a file should become part of the project, copy it into the repo yourself.";
+        }
+      } catch (e) {
+        this.emit({ type: "log", level: "warn", text: `Failed to stage attachments: ${(e as Error).message}` });
+      }
+    }
+    if (this.stopped) return;
+    const message = buildInstructionMessage(next.text, this.sentCount, this.total, note);
     this.sentCount += 1;
     this.inbox.push({
       type: "user",
@@ -454,6 +479,25 @@ export class AgentSession {
       message: { role: "user", content: message },
       parent_tool_use_id: null,
     });
+  }
+
+  /** Write an instruction's attachments to a per-instruction dir OUTSIDE the
+   *  git repo so they don't get accidentally committed, and return their paths. */
+  private async materializeAttachments(
+    instructionId: string,
+  ): Promise<Array<{ path: string; mimeType: string; filename: string }>> {
+    const atts = await prisma.instructionAttachment.findMany({ where: { instructionId } });
+    if (atts.length === 0) return [];
+    const dir = path.resolve(env.workspacesDir, `${this.projectId}__attachments`, instructionId);
+    fs.mkdirSync(dir, { recursive: true });
+    const out: Array<{ path: string; mimeType: string; filename: string }> = [];
+    for (const a of atts) {
+      const safe = path.basename(a.filename).replace(/[^a-zA-Z0-9._-]/g, "_") || "file";
+      const p = path.join(dir, safe);
+      fs.writeFileSync(p, Buffer.from(a.data, "base64"));
+      out.push({ path: p, mimeType: a.mimeType, filename: safe });
+    }
+    return out;
   }
 
   private async maybeMergeAtEnd(): Promise<void> {
