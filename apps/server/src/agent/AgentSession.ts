@@ -500,8 +500,17 @@ export class AgentSession {
       return false;
     }
 
-    // Probe first: if Railway isn't connected/configured for this project,
-    // skip silently instead of burning the 5-minute wait.
+    // Only auto-check projects EXPLICITLY linked to a Railway service (the
+    // per-project ↻ Railway target). Static sites (e.g. GitHub Pages) are never
+    // linked, so they're skipped — and we deliberately do NOT fall back to the
+    // account-wide Railway default, which would wrongly match unrelated projects.
+    const linked = await prisma.project.findUnique({
+      where: { id: this.projectId },
+      select: { railwayProjectId: true },
+    });
+    if (!linked?.railwayProjectId) return false;
+
+    // Probe: confirm Railway is reachable before burning the 5-minute wait.
     try {
       await fetchLatestLogs(this.userId, this.projectId);
     } catch (e) {

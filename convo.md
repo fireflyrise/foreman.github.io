@@ -206,6 +206,11 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       (2) to avoid infinite loops; skips silently if Railway isn't configured or under the
       MANUAL merge policy. The manual ↻ Railway button still works any time mid-run. This
       replaces "merge optimistically with no post-deploy verification" from the old TODO.
+      DETECTION: the auto-check fires ONLY for projects with an explicit per-project
+      `railwayProjectId` (set via the ↻ Railway dialog). It deliberately does NOT fall back
+      to the account-wide Railway default — otherwise a static GitHub Pages project (no
+      Railway) would falsely match the account default and check the wrong service. No
+      per-project Railway link = treated as "not on Railway" = skipped.
 
 ## Verification commands
 
