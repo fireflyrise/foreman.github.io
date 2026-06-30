@@ -14,6 +14,7 @@ import { integrationRoutes } from "./routes/integrations.js";
 import { recordError } from "./errors/store.js";
 import { ErrorType } from "./errors/types.js";
 import { startNotifier } from "./errors/notifier.js";
+import { SessionRegistry } from "./agent/SessionRegistry.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +58,10 @@ async function main(): Promise<void> {
   });
 
   startNotifier();
+
+  // In-memory sessions don't survive a restart; mark orphaned "running" rows
+  // stopped so the UI isn't stuck on a dead session after a redeploy.
+  await SessionRegistry.reconcileOnBoot();
 
   await app.listen({ port: env.port, host: "0.0.0.0" });
   app.log.info(`Foreman server listening on :${env.port}`);

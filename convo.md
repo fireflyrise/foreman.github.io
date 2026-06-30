@@ -212,6 +212,17 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       Railway) would falsely match the account default and check the wrong service. No
       per-project Railway link = treated as "not on Railway" = skipped.
 
+- [x] Fix SSE `ERR_HTTP2_PROTOCOL_ERROR` + stuck "running" session: the agent stream
+      (`GET /session/stream`) set `Connection: keep-alive`, a connection-specific header
+      FORBIDDEN in HTTP/2 (RFC 7540 §8.1.2.2). Railway's edge is HTTP/2, so the browser
+      killed the stream → console froze and Stop appeared to do nothing (the stop status
+      event never arrived). Fix: only send `Connection` on HTTP/1.x (`req.raw.httpVersionMajor
+      < 2`), `flushHeaders()`, and emit `retry: 3000`. Also made restarts recoverable:
+      `SessionRegistry.stop` now marks a non-terminal DB session stopped when no live session
+      exists, and `reconcileOnBoot()` (called from `index.ts` startup) marks orphaned
+      non-terminal sessions stopped — in-memory sessions don't survive a redeploy (crash-
+      resume still a TODO), so this prevents a dead "running" row with a no-op Stop button.
+
 ## Verification commands
 
 ```bash
