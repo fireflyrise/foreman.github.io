@@ -198,11 +198,30 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
 
   return (
     <Panel className="overflow-auto">
-      <h3 className="mb-1 text-sm font-semibold">Web Creator</h3>
-      <p className="mb-3 text-xs text-gray-400">
-        Everything the website-building playbook needs. On submit, the orchestrator seeds the
-        full build instructions and runs Claude Code to generate the complete multi-page site.
-      </p>
+      <div className="sticky -top-4 z-10 -mx-4 -mt-4 mb-3 border-b border-edge bg-panel/95 px-4 pb-3 pt-4 backdrop-blur">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Web Creator</h3>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={saveOnly} disabled={busy}>
+              Save draft
+            </Button>
+            <Button onClick={run} disabled={!valid || busy}>
+              {busy ? "Starting…" : "▶ Generate & build"}
+            </Button>
+          </div>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-400">
+          Fill the brief, then <span className="text-gray-200">Generate &amp; build</span> — it
+          seeds the build steps and <span className="text-gray-200">starts the run immediately</span>{" "}
+          (watch the Agent Console). “Save draft” stores the brief without running.
+        </p>
+        {msg && <p className="mt-1 text-[11px] text-amber-300">{msg}</p>}
+        {!valid && (
+          <p className="mt-1 text-[11px] text-gray-500">
+            Company name, industry, and a valid primary color are required to build.
+          </p>
+        )}
+      </div>
 
       <div className="space-y-4">
         <Field label="Goal (rewritable)">
@@ -400,18 +419,6 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
           <Field label="Anything else"><TextArea rows={2} value={f.extraNotes} onChange={(e) => up("extraNotes", e.target.value)} /></Field>
         </Section>
       </div>
-
-      {msg && <p className="mt-3 text-xs text-amber-300">{msg}</p>}
-
-      <div className="mt-4 flex gap-2">
-        <Button onClick={run} disabled={!valid || busy}>
-          {busy ? "Working…" : "Generate website"}
-        </Button>
-        <Button variant="ghost" onClick={saveOnly} disabled={busy}>
-          Save without running
-        </Button>
-      </div>
-      {!valid && <p className="mt-2 text-[11px] text-gray-500">Company name, industry, and a valid primary color are required.</p>}
     </Panel>
   );
 }
