@@ -311,6 +311,8 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
 - [x] User uploaded real `logo.png` + `favicon.png` to the branch (commit "Add files via
       upload"). Switched header `<img>` → `/logo.png`, favicon link → `/favicon.png` (png),
       removed the placeholder `logo.svg`. Both PNGs bundle to `dist/` and serve at root.
+- [x] Refreshed `logo.png` + `favicon.png` with the user's re-uploaded versions (no code
+      change — refs already point at these filenames).
 
 ## Verification commands
 
