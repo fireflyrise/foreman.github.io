@@ -195,6 +195,22 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       New: `Project.webAuthMode` + migration `4_add_web_auth_mode`, `SetWebAuthModeInput`,
       `ProjectDTO.webAuthMode`, PUT `/api/projects/:id/web-auth-mode`, `api.setWebAuthMode`,
       and the web-creator run now reads `project.webAuthMode` instead of forcing "api".
+- [x] Automatic end-of-session Railway deploy check + self-heal: after ALL instructions
+      have run and merged to main, `AgentSession.autoRailwayDeployCheck()` (called from
+      `maybeMergeAtEnd`) probes that Railway is configured, then emits a status log
+      ("Waiting 5 minutes for the Railway deployment to build and go live…"), keeps the
+      session in "running" so Stop stays available, waits a fixed `DEPLOY_WAIT_MS` (5 min),
+      then pulls the latest deploy status via `fetchLatestLogs`. If the deploy FAILED it
+      grabs the logs and injects a fix instruction (`injectRailwayFix`) so the run resumes
+      and self-heals; on success it logs ✅ and finalizes. Bounded by `MAX_RAILWAY_AUTOFIX`
+      (2) to avoid infinite loops; skips silently if Railway isn't configured or under the
+      MANUAL merge policy. The manual ↻ Railway button still works any time mid-run. This
+      replaces "merge optimistically with no post-deploy verification" from the old TODO.
+      DETECTION: the auto-check fires ONLY for projects with an explicit per-project
+      `railwayProjectId` (set via the ↻ Railway dialog). It deliberately does NOT fall back
+      to the account-wide Railway default — otherwise a static GitHub Pages project (no
+      Railway) would falsely match the account default and check the wrong service. No
+      per-project Railway link = treated as "not on Railway" = skipped.
 
 ## Verification commands
 

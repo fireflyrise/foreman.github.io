@@ -4,6 +4,7 @@ import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { RepoManager } from "../git/RepoManager.js";
 import { openPullRequest, mergePullRequest } from "../integrations/github.js";
+import { fetchLatestLogs } from "../integrations/railway.js";
 import { createRailwayMcpServer } from "./mcp/railwayLogsTool.js";
 import { createLogoMcpServer } from "./mcp/logoTool.js";
 import { recordError } from "../errors/store.js";
@@ -78,6 +79,13 @@ export class AgentSession {
 
   status: SessionStatus = "idle";
   private stopped = false;
+
+  /** How many times we've auto-injected a Railway deploy fix this session. */
+  private railwayAutoFixAttempts = 0;
+  /** Cap on automatic deploy self-heal rounds before we give up and finalize. */
+  private static readonly MAX_RAILWAY_AUTOFIX = 2;
+  /** Fixed wait after the final merge for Railway to build + deploy (ms). */
+  private static readonly DEPLOY_WAIT_MS = 5 * 60 * 1000;
 
   constructor(args: StartArgs) {
     this.projectId = args.projectId;
@@ -462,7 +470,117 @@ export class AgentSession {
       });
       this.emit({ type: "git", action: "merge", detail: `Merged PR #${this.prNumber} into main` });
     }
+
+    // After the final merge, verify the deployment succeeded. If a fix was
+    // injected, the run continues instead of finalizing now.
+    const resumed = await this.autoRailwayDeployCheck();
+    if (resumed) return;
+
     await this.finalize();
+  }
+
+  /**
+   * End-of-session deploy verification. After all instructions have run and
+   * merged, wait a fixed window for Railway to build + deploy the new code,
+   * then pull the latest deployment status. On failure, grab the logs and
+   * inject a fix instruction so the session self-heals. Returns true if a fix
+   * was queued (the run should continue rather than finalize).
+   */
+  private async autoRailwayDeployCheck(): Promise<boolean> {
+    if (this.stopped) return false;
+    // Nothing reached main under MANUAL, so there's no new deploy to check.
+    if (this.mergePolicy === "MANUAL") return false;
+
+    if (this.railwayAutoFixAttempts >= AgentSession.MAX_RAILWAY_AUTOFIX) {
+      this.emit({
+        type: "log",
+        level: "warn",
+        text: `Railway deploy still not healthy after ${AgentSession.MAX_RAILWAY_AUTOFIX} auto-fix attempts — stopping auto-heal. Use the ↻ Railway button to retry.`,
+      });
+      return false;
+    }
+
+    // Only auto-check projects EXPLICITLY linked to a Railway service (the
+    // per-project ↻ Railway target). Static sites (e.g. GitHub Pages) are never
+    // linked, so they're skipped — and we deliberately do NOT fall back to the
+    // account-wide Railway default, which would wrongly match unrelated projects.
+    const linked = await prisma.project.findUnique({
+      where: { id: this.projectId },
+      select: { railwayProjectId: true },
+    });
+    if (!linked?.railwayProjectId) return false;
+
+    // Probe: confirm Railway is reachable before burning the 5-minute wait.
+    try {
+      await fetchLatestLogs(this.userId, this.projectId);
+    } catch (e) {
+      this.emit({
+        type: "log",
+        level: "info",
+        text: `Skipped Railway deploy check: ${(e as Error).message}`,
+      });
+      return false;
+    }
+
+    const mins = Math.round(AgentSession.DEPLOY_WAIT_MS / 60000);
+    // Keep the session "running" while we wait so the chip isn't prematurely
+    // "completed" and the Stop button stays available.
+    this.setStatus("running");
+    this.emit({
+      type: "log",
+      level: "info",
+      text: `All instructions complete and merged to main. Waiting ${mins} minutes for the Railway deployment to build and go live before checking for errors…`,
+    });
+
+    await this.sleep(AgentSession.DEPLOY_WAIT_MS);
+    if (this.stopped) return false;
+
+    let result: Awaited<ReturnType<typeof fetchLatestLogs>>;
+    try {
+      result = await fetchLatestLogs(this.userId, this.projectId);
+    } catch (e) {
+      // Railway became unreachable mid-wait — don't block finalize.
+      this.emit({
+        type: "log",
+        level: "info",
+        text: `Skipped Railway deploy check: ${(e as Error).message}`,
+      });
+      this.setStatus("completed");
+      return false;
+    }
+
+    if (!result.failed) {
+      this.emit({
+        type: "log",
+        level: "info",
+        text: `Railway deployment status: ${result.status ?? "unknown"} — no errors detected. ✅`,
+      });
+      this.setStatus("completed");
+      return false;
+    }
+
+    // Deployment failed → pull logs and inject a fix; the loop resumes.
+    this.railwayAutoFixAttempts += 1;
+    const body = result.logs
+      .map((l) => `${l.severity ?? "info"}: ${l.message}`)
+      .join("\n")
+      .slice(0, 6000);
+    this.emit({
+      type: "log",
+      level: "error",
+      text: `Railway deployment ${result.status ?? "FAILED"} — pulling logs and injecting a fix (auto-fix ${this.railwayAutoFixAttempts}/${AgentSession.MAX_RAILWAY_AUTOFIX}).`,
+    });
+    this.injectRailwayFix(result.status ?? "FAILED", body);
+    return true;
+  }
+
+  /** Resolve after `ms`, returning early if the session is stopped. */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      const t = setTimeout(resolve, ms);
+      // Don't keep the event loop alive solely for this timer.
+      (t as { unref?: () => void }).unref?.();
+    });
   }
 
   /** Append an instruction to a still-running session (e.g. user adds one, or Railway self-heal). */
