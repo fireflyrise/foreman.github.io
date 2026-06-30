@@ -10,6 +10,17 @@ import {
 import { api } from "../api/client.js";
 import { Button, Label, Panel, TextArea, TextInput } from "./ui.js";
 
+/** Mix a hex color toward white by `amt` (0–1) for a lighter hover shade. */
+function lighten(hex: string, amt: number): string {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m?.[1]) return hex;
+  const n = parseInt(m[1], 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) =>
+    Math.round(v + (255 - v) * amt),
+  );
+  return `#${ch.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
 function initialForm(project: ProjectDTO): WebCreatorInput {
   const s = project.webSpec;
   if (s) return s;
@@ -103,6 +114,8 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
   const [suggested, setSuggested] = useState<string[]>([]);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestErr, setSuggestErr] = useState<string | null>(null);
+  const [colorBusy, setColorBusy] = useState(false);
+  const [colorErr, setColorErr] = useState<string | null>(null);
 
   function up<K extends keyof WebCreatorInput>(key: K, value: WebCreatorInput[K]) {
     setF((prev) => ({ ...prev, [key]: value }));
@@ -113,7 +126,12 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => up(field, reader.result as string);
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        up(field, dataUrl);
+        // Auto-default the brand colors from a freshly uploaded logo.
+        if (field === "logoUrl") void matchColorsToLogo(dataUrl);
+      };
       reader.readAsDataURL(file);
     };
   }
@@ -128,10 +146,28 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
         accentHex: f.accentHex,
       });
       up("logoUrl", logo.dataUrl);
+      void matchColorsToLogo(logo.dataUrl);
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
       setGenBusy(false);
+    }
+  }
+
+  // Ask the agent for the logo's main color → set primary; derive a lighter
+  // hover shade from it.
+  async function matchColorsToLogo(dataUrl?: string) {
+    const logo = dataUrl ?? f.logoUrl;
+    if (!logo || !logo.startsWith("data:")) return;
+    setColorBusy(true);
+    setColorErr(null);
+    try {
+      const { primary } = await api.suggestColors(project.id, logo);
+      setF((prev) => ({ ...prev, accentHex: primary, colorHover: lighten(primary, 0.28) }));
+    } catch (e) {
+      setColorErr((e as Error).message);
+    } finally {
+      setColorBusy(false);
     }
   }
 
@@ -353,20 +389,6 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
         </Section>
 
         <Section title="3 · Branding">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Primary color *">
-              <div className="flex items-center gap-2">
-                <HexColorPicker color={f.accentHex} onChange={(c) => up("accentHex", c)} style={{ width: 110, height: 110 }} />
-                <TextInput value={f.accentHex} onChange={(e) => up("accentHex", e.target.value)} className="w-24" />
-              </div>
-            </Field>
-            <Field label="Hover color (optional)">
-              <div className="flex items-center gap-2">
-                <HexColorPicker color={f.colorHover || "#1d4ed8"} onChange={(c) => up("colorHover", c)} style={{ width: 110, height: 110 }} />
-                <TextInput value={f.colorHover ?? ""} onChange={(e) => up("colorHover", e.target.value)} className="w-24" placeholder="#1d4ed8" />
-              </div>
-            </Field>
-          </div>
           <Field label="Logo">
             <div className="flex items-center gap-3">
               {f.logoUrl ? (
@@ -377,6 +399,11 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
                 </div>
               )}
               <input type="file" accept="image/*" onChange={onUpload("logoUrl")} className="text-xs text-gray-400" />
+              {f.logoUrl?.startsWith("data:") && (
+                <Button variant="subtle" onClick={() => matchColorsToLogo()} disabled={colorBusy}>
+                  {colorBusy ? "Matching…" : "🎨 Match colors to logo"}
+                </Button>
+              )}
             </div>
           </Field>
           <Field label="Or describe a logo to generate (Gemini)">
@@ -387,6 +414,25 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
               </Button>
             </div>
           </Field>
+          {colorErr && <p className="text-[11px] text-red-300">{colorErr}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Primary color *">
+              <div className="flex items-center gap-2">
+                <HexColorPicker color={f.accentHex} onChange={(c) => up("accentHex", c)} style={{ width: 110, height: 110 }} />
+                <TextInput value={f.accentHex} onChange={(e) => up("accentHex", e.target.value)} className="w-24" />
+              </div>
+            </Field>
+            <Field label="Primary hover color">
+              <div className="flex items-center gap-2">
+                <HexColorPicker color={f.colorHover || "#1d4ed8"} onChange={(c) => up("colorHover", c)} style={{ width: 110, height: 110 }} />
+                <TextInput value={f.colorHover ?? ""} onChange={(e) => up("colorHover", e.target.value)} className="w-24" placeholder="#1d4ed8" />
+              </div>
+            </Field>
+          </div>
+          <p className="text-[11px] text-gray-500">
+            Tip: upload a logo and click <span className="text-gray-300">🎨 Match colors to logo</span>{" "}
+            — the agent sets the primary to your logo's main color and the hover to a lighter shade.
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Favicon (light theme)">
               <input type="file" accept="image/png" onChange={onUpload("faviconLightUrl")} className="text-xs text-gray-400" />

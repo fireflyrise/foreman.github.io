@@ -397,6 +397,14 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       merged PR restarts Foreman and ends the in-progress build. Pause shipping to let a build
       finish.
 
+- [x] Web Creator branding tweaks: (a) suggest-services now asks for 10–20 (cap 20, fewer ok);
+      (b) reordered the Branding section so the LOGO comes BEFORE the colors; (c) renamed
+      "Hover color" → "Primary hover color"; (d) AGENT color-matching — new `suggestLogoColor`
+      (Anthropic VISION via the API key) reads the logo's dominant brand color; the form sets
+      primary = that color and hover = a lighter tint (`lighten()` client-side). Auto-runs when
+      a logo is uploaded or generated, plus a "🎨 Match colors to logo" button. Route
+      `POST /web-creator/suggest-colors`, `api.suggestColors`.
+
 ## Verification commands
 
 ```bash

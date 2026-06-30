@@ -168,4 +168,6 @@ export const api = {
     input: { industry: string; mainService?: string; city?: string; state?: string; businessType?: string },
   ) =>
     req<{ services: string[] }>("POST", `/api/projects/${id}/web-creator/suggest-services`, input),
+  suggestColors: (id: string, logoUrl: string) =>
+    req<{ primary: string }>("POST", `/api/projects/${id}/web-creator/suggest-colors`, { logoUrl }),
 };
