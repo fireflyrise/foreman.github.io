@@ -13,9 +13,8 @@ type Module = "software" | "web";
 
 export function ProjectView({ project }: { project: ProjectDTO }) {
   const qc = useQueryClient();
-  const [module, setModule] = useState<Module>(
-    project.projectType === "web" ? "web" : "software",
-  );
+  // The project's type fixes which module it uses — no in-project switching.
+  const module: Module = project.projectType === "web" ? "web" : "software";
   const [showRailway, setShowRailway] = useState(false);
   const railwaySet = Boolean(project.railwayProjectId);
 
@@ -91,20 +90,9 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
           >
             🚆 Railway{railwaySet ? " ✓" : ""}
           </Button>
-          <div className="flex rounded-md border border-edge p-0.5">
-            <button
-              onClick={() => setModule("software")}
-              className={`rounded px-3 py-1 text-xs ${module === "software" ? "bg-edge text-white" : "text-gray-400"}`}
-            >
-              Module 1 · Software
-            </button>
-            <button
-              onClick={() => setModule("web")}
-              className={`rounded px-3 py-1 text-xs ${module === "web" ? "bg-edge text-white" : "text-gray-400"}`}
-            >
-              Module 2 · Web
-            </button>
-          </div>
+          <span className="rounded-md border border-edge px-3 py-1 text-xs text-gray-300">
+            {module === "web" ? "Web project" : "Software project"}
+          </span>
         </div>
       </div>
 
