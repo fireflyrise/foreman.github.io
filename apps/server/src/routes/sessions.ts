@@ -81,11 +81,12 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       }
 
       try {
-        // Web Creator is client work → bill the Anthropic API key, not the subscription.
+        // Web Creator defaults to the Anthropic API key (client work), but the
+        // owner can flip a project to the Max subscription for their own sites.
         const session = await SessionRegistry.start({
           projectId: id,
           userId: getUserId(req),
-          authMode: "api",
+          authMode: project.webAuthMode === "subscription" ? "subscription" : "api",
           goalOverride: {
             mainGoal: spec.goal,
             limitations:

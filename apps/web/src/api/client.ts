@@ -89,6 +89,8 @@ export const api = {
     req<{ project: ProjectDTO }>("PATCH", `/api/projects/${id}`, { name }),
   setAuthMode: (id: string, authMode: "subscription" | "api") =>
     req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/auth-mode`, { authMode }),
+  setWebAuthMode: (id: string, webAuthMode: "subscription" | "api") =>
+    req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/web-auth-mode`, { webAuthMode }),
   setProjectRailway: (
     id: string,
     input: {
