@@ -491,7 +491,7 @@ export class AgentSession {
         this.defaultBranchName(),
         `Foreman: ${this.branchName}`,
         "Automated changes by the Foreman orchestrator.",
-        this.mergePolicy === "PER_SESSION",
+        false, // never draft — Foreman merges it itself (a draft PR can't be merged)
       );
       if (this.sessionDbId) {
         await prisma.session

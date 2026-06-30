@@ -22,6 +22,11 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
     await qc.invalidateQueries({ queryKey: ["projects"] });
   }
 
+  async function changeMergePolicy(mergePolicy: "PER_INSTRUCTION" | "PER_SESSION" | "MANUAL") {
+    await api.setMergePolicy(project.id, mergePolicy);
+    await qc.invalidateQueries({ queryKey: ["projects"] });
+  }
+
   return (
     <div className="flex h-full flex-col p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -35,7 +40,23 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
             {project.repoFullName} ↗
           </a>
           <span className="text-[11px] text-gray-500">branch: {project.defaultBranch}</span>
-          <span className="text-[11px] text-gray-500">merge: {project.mergePolicy}</span>
+          <label
+            className="flex items-center gap-1 text-[11px] text-gray-500"
+            title="When the work merges to main: after each instruction, once after all instructions complete, or never (you merge manually)."
+          >
+            merge:
+            <select
+              value={project.mergePolicy}
+              onChange={(e) =>
+                changeMergePolicy(e.target.value as "PER_INSTRUCTION" | "PER_SESSION" | "MANUAL")
+              }
+              className="rounded border border-edge bg-panel px-1 py-0.5 text-[11px] text-gray-200 outline-none"
+            >
+              <option value="PER_SESSION">after all instructions</option>
+              <option value="PER_INSTRUCTION">after each instruction</option>
+              <option value="MANUAL">manual (never auto-merge)</option>
+            </select>
+          </label>
           <label
             className="flex items-center gap-1 text-[11px] text-gray-500"
             title="Which credential the Software Creator (Module 1) bills against. Web Creator (Module 2) has its own auth setting in that tab."

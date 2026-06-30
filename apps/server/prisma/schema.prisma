@@ -24,7 +24,8 @@ model Project {
   repoName             String
   repoFullName         String
   defaultBranch        String           @default("main")
-  mergePolicy          String           @default("PER_INSTRUCTION")
+  // Default: merge once after ALL instructions complete (PER_SESSION).
+  mergePolicy          String           @default("PER_SESSION")
   // Auth for Software Creator (Module 1) runs: "subscription" (Max) or "api".
   // Default Max — most Module 1 work is the owner's own software.
   authMode             String           @default("subscription")
