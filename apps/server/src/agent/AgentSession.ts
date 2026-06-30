@@ -10,6 +10,7 @@ import {
   mergePullRequest,
   getPrCiState,
   updatePrBranch,
+  deleteBranch,
 } from "../integrations/github.js";
 import { fetchLatestLogs } from "../integrations/railway.js";
 import { createRailwayMcpServer } from "./mcp/railwayLogsTool.js";
@@ -878,6 +879,15 @@ export class AgentSession {
       await prisma.session
         .update({ where: { id: this.sessionDbId }, data: { endedAt: new Date() } })
         .catch(() => undefined);
+    }
+
+    // Clean up the session branch once nothing is left pointing at it: every PR
+    // merged (prNumber cleared) and not the MANUAL policy (which intentionally
+    // leaves the PR + branch open for the user). No reason to keep it alive.
+    if (this.branchName && this.prNumber === null && this.mergePolicy !== "MANUAL") {
+      const [owner, repo] = await this.repoFullName();
+      await deleteBranch(this.userId, owner, repo, this.branchName).catch(() => undefined);
+      this.emit({ type: "git", action: "branch", detail: `Deleted merged branch ${this.branchName}` });
     }
   }
 

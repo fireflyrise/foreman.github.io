@@ -118,6 +118,20 @@ export async function mergePullRequest(
   await octokit.pulls.merge({ owner, repo, pull_number: prNumber, merge_method: method });
 }
 
+/** Delete a remote branch (best-effort; ignores "already gone"). */
+export async function deleteBranch(
+  userId: string,
+  owner: string,
+  repo: string,
+  branch: string,
+): Promise<void> {
+  if (!branch) return;
+  const octokit = await getOctokit(userId);
+  await octokit.git
+    .deleteRef({ owner, repo, ref: `heads/${branch}` })
+    .catch(() => undefined);
+}
+
 export interface PrCiState {
   /** GitHub's computed mergeability; null while still being calculated. */
   mergeable: boolean | null;
