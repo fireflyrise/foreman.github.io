@@ -314,6 +314,15 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
 - [x] Refreshed `logo.png` + `favicon.png` with the user's re-uploaded versions (no code
       change — refs already point at these filenames).
 
+- [x] UX: unified the per-module billing control + renamed "auth"→"billing". Previously the
+      header showed "software auth" (Module 1) even on the Module 2 tab, AND the Web Creator
+      form showed a separate "web auth" dropdown — two controls at once, confusing, and "auth"
+      wrongly implies access/permissions. Now ONE header dropdown labeled "billing (Software|
+      Web):" reflects the ACTIVE module (reads/writes `authMode` on Module 1, `webAuthMode` on
+      Module 2 via `changeAuthMode`/`changeWebAuthMode`). Removed the duplicate "web auth"
+      selector from `WebCreatorForm`. It selects which credential the run bills against (Max
+      subscription vs pay-as-you-go API key).
+
 ## Verification commands
 
 ```bash

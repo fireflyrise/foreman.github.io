@@ -182,11 +182,6 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
     }
   }
 
-  async function changeWebAuthMode(webAuthMode: "subscription" | "api") {
-    await api.setWebAuthMode(project.id, webAuthMode);
-    await qc.invalidateQueries({ queryKey: ["projects"] });
-  }
-
   async function saveOnly() {
     setBusy(true);
     setMsg(null);
@@ -208,21 +203,6 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
         Everything the website-building playbook needs. On submit, the orchestrator seeds the
         full build instructions and runs Claude Code to generate the complete multi-page site.
       </p>
-
-      <label
-        className="mb-4 flex items-center gap-2 text-[11px] text-gray-400"
-        title="Which credential this Web Creator run bills against. Default API key (client work); switch to Max for your own sites."
-      >
-        web auth:
-        <select
-          value={project.webAuthMode}
-          onChange={(e) => changeWebAuthMode(e.target.value as "subscription" | "api")}
-          className="rounded border border-edge bg-panel px-1 py-0.5 text-[11px] text-gray-200 outline-none"
-        >
-          <option value="api">API key (client work)</option>
-          <option value="subscription">Max subscription (my own site)</option>
-        </select>
-      </label>
 
       <div className="space-y-4">
         <Field label="Goal (rewritable)">
