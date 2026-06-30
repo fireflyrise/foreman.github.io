@@ -527,6 +527,11 @@ export class AgentSession {
         this.emit({ type: "git", action: "merge", detail: `Merged PR #${prNumber} into main` });
         this.prNumber = null; // next instruction opens a fresh PR off updated main
         this.ciFixAttempts = 0;
+        // Re-base the session branch onto the freshly-merged main so the next
+        // instruction starts clean (prevents divergence/conflicts in convo.md).
+        await this.repo.resyncBranchToDefault(this.branchName).catch((e) => {
+          this.emit({ type: "log", level: "warn", text: `Branch resync failed: ${(e as Error).message}` });
+        });
         return "merged";
       } catch (e) {
         this.emit({

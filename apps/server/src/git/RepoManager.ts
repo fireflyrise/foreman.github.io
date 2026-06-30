@@ -72,6 +72,24 @@ export class RepoManager {
     await this.git().push(["-u", "origin", branch]);
   }
 
+  /**
+   * After a per-instruction squash-merge, re-base the session branch onto the
+   * updated default branch so the NEXT instruction starts from a clean copy of
+   * `main`. Without this the branch keeps its old (now squashed-away) commits
+   * and diverges from `main`, causing conflicts in files touched every
+   * instruction (e.g. `convo.md`). The session branch is disposable, so a
+   * hard reset + force-push is safe.
+   */
+  async resyncBranchToDefault(branch: string): Promise<void> {
+    const git = this.git();
+    await git.fetch("origin", this.defaultBranch);
+    // Drop any stray uncommitted changes, then move the branch to the new main.
+    await git.reset(["--hard"]);
+    await git.checkout(branch).catch(() => undefined);
+    await git.reset(["--hard", `origin/${this.defaultBranch}`]);
+    await git.push(["--force", "origin", branch]).catch(() => undefined);
+  }
+
   /** True if the working tree has uncommitted changes. */
   async hasChanges(): Promise<boolean> {
     const status = await this.git().status();

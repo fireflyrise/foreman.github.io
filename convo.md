@@ -278,6 +278,17 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       every `instruction_status` SSE event (`patchInstructionStatus` via `qc.setQueryData`),
       so badges flip live without a refresh.
 
+- [x] Fix convo.md (and other every-instruction files) merge conflicts: the session branch
+      was cut from main ONCE and never re-synced, so after each PER_INSTRUCTION squash-merge
+      the branch kept its old (squashed-away) commits and DIVERGED from main — files edited
+      every instruction (esp. `convo.md`) collided, leaving `<<<<<<< session/... ===== >>>>>>>
+      main` markers. Fix: `RepoManager.resyncBranchToDefault(branch)` does
+      `fetch + reset --hard origin/<default> + force-push` after a successful merge (called
+      from `mergeWhenGreen`), re-basing the session branch onto the freshly-merged main so the
+      NEXT instruction starts from a clean copy. Each instruction's PR is now a single-
+      instruction diff off current main; no divergence. (Session branch is disposable, so the
+      hard reset + force-push is safe.)
+
 ## Verification commands
 
 ```bash
