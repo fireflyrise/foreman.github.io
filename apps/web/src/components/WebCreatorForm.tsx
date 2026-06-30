@@ -192,11 +192,7 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
             {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved ✓" : "Autosaves"}
           </span>
         </div>
-        <p className="mt-1 text-[11px] text-gray-400">
-          Fill the brief — it saves automatically. Press{" "}
-          <span className="text-gray-200">▶ Generate &amp; build</span> in the Agent Console to
-          build and launch the site.
-        </p>
+        <p className="mt-1 text-[11px] text-gray-400">Fill the brief — it saves automatically.</p>
         {msg && <p className="mt-1 text-[11px] text-amber-300">{msg}</p>}
         {!valid && (
           <p className="mt-1 text-[11px] text-gray-500">

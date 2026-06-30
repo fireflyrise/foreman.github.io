@@ -6,7 +6,7 @@ import { prisma } from "../db.js";
 import { saveWebSpec } from "../webspec.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
 import { buildWebCreatorInstructions } from "../agent/prompts.js";
-import { writePlaybookForProject } from "../agent/webCreatorPlaybook.js";
+import { writePlaybookForProject, materializeWebAssets } from "../agent/webCreatorPlaybook.js";
 import { fetchLatestLogs } from "../integrations/railway.js";
 import { recordError } from "../errors/store.js";
 import { ErrorType } from "../errors/types.js";
@@ -85,9 +85,14 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
       // Drop the full playbook where the agent can read it (outside the repo).
       const playbookPath = writePlaybookForProject(id);
 
+      // Decode any uploaded base64 images (logo/favicon/hero/OG) to files and
+      // reference them by path — keeps the brief small (a multi-MB data URL in
+      // the prompt is what made the build hang on base64 decoding).
+      const briefSpec = materializeWebAssets(id, spec);
+
       // (Re)seed the instruction list — replace any prior generated steps so
       // re-running never appends duplicates.
-      const steps = buildWebCreatorInstructions(spec, playbookPath);
+      const steps = buildWebCreatorInstructions(briefSpec, playbookPath);
       await prisma.instruction.deleteMany({ where: { projectId: id } });
       let order = 0;
       for (const text of steps) {

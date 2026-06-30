@@ -362,6 +362,17 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       branch open). A stopped session with an open PR keeps its branch. So the tool's
       `session/<slug>/<ts>` branches don't pile up.
 
+- [x] Fix Web Creator "stuck" build + trim stale helper text. ROOT CAUSE: `formatWebBrief`
+      embedded uploaded images (logo/favicon/hero/OG) as base64 data URLs directly in the
+      instruction text → multi-MB prompt → the agent burned forever trying to base64-decode
+      them in the console. FIX: `materializeWebAssets(projectId, spec)` in `webCreatorPlaybook
+      .ts` decodes any `data:*;base64,` image fields to files under `<workspacesDir>/<projectId>
+      __webassets/` and returns a spec copy with FILE PATHS; the run route builds the brief from
+      that copy (not the stored base64). Added a brief note telling the agent those paths are
+      local files to copy in (never fetch/decode). Also trimmed the WebCreatorForm helper text
+      to just "Fill the brief — it saves automatically." (the prior "Press Generate & build…"
+      line was stale).
+
 ## Verification commands
 
 ```bash
