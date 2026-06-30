@@ -251,6 +251,12 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       in-memory session (no crash-resume yet), which can orphan an open project PR — that's a
       separate known gap.
 
+- [x] Paste-to-attach images: `InstructionList.tsx` now handles `onPaste` on the edit-row
+      TextInput (uploads the pasted image straight to that instruction via `uploadFiles`) and
+      the add-row TextInput (stages it for the next instruction). `imagesFromClipboard` pulls
+      image items off the clipboard and gives each a unique `pasted-<ts>-<i>.<ext>` name so
+      same-named pastes don't collide on disk. Builds on the existing attachment system.
+
 ## Verification commands
 
 ```bash

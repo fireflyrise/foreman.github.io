@@ -45,6 +45,23 @@ function fileIcon(mime: string): string {
   return mime.startsWith("image/") ? "🖼" : "📄";
 }
 
+/** Pull image files out of a paste event, giving each a unique name (pasted
+ *  images usually arrive unnamed / all called "image.png"). */
+function imagesFromClipboard(e: React.ClipboardEvent): File[] {
+  const out: File[] = [];
+  const items = e.clipboardData?.items ?? [];
+  Array.from(items).forEach((it, i) => {
+    if (it.kind === "file" && it.type.startsWith("image/")) {
+      const f = it.getAsFile();
+      if (f) {
+        const ext = it.type.split("/")[1] || "png";
+        out.push(new File([f], `pasted-${Date.now()}-${i}.${ext}`, { type: it.type }));
+      }
+    }
+  });
+  return out;
+}
+
 function Row({
   instr,
   projectId,
@@ -80,11 +97,11 @@ function Row({
     void qc.invalidateQueries({ queryKey: ["projects"] });
   }
 
-  async function attach(files: FileList | null) {
-    if (!files || files.length === 0) return;
+  async function uploadFiles(files: File[]) {
+    if (files.length === 0) return;
     setBusy(true);
     try {
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         const dataBase64 = await fileToBase64(file);
         await api.addAttachment(projectId, instr.id, {
           filename: file.name,
@@ -125,6 +142,13 @@ function Row({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={save}
+            onPaste={(e) => {
+              const imgs = imagesFromClipboard(e);
+              if (imgs.length) {
+                e.preventDefault();
+                void uploadFiles(imgs);
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") save();
               if (e.key === "Escape") setEditing(false);
@@ -173,7 +197,7 @@ function Row({
           className="hidden"
           disabled={busy}
           onChange={(e) => {
-            void attach(e.target.files);
+            void uploadFiles(Array.from(e.target.files ?? []));
             e.target.value = "";
           }}
         />
@@ -241,7 +265,8 @@ export function InstructionList({ project }: { project: ProjectDTO }) {
       <p className="mb-3 text-xs text-gray-400">
         Executed one at a time, top to bottom. The next instruction is sent only after the
         current one finishes. Drag to reorder, click text to edit. Attach files or photos with 📎
-        (e.g. an image to swap in, or a skill file to follow).
+        — or just paste an image straight into the text box (e.g. an image to swap in, or a skill
+        file to follow).
       </p>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -263,6 +288,13 @@ export function InstructionList({ project }: { project: ProjectDTO }) {
           placeholder="Add an instruction…"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            const imgs = imagesFromClipboard(e);
+            if (imgs.length) {
+              e.preventDefault();
+              setStaged((prev) => [...prev, ...imgs]);
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") add();
           }}
