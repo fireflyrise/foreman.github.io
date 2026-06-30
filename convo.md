@@ -382,6 +382,14 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       on Stop, the button now flips to Run. (Live stops already worked via the snapshot
       override; this fixes the post-redeploy orphan case.)
 
+- [x] AI "Suggest services" in Web Creator → Services. A ✨ button next to Main service calls
+      `POST /web-creator/suggest-services` (`integrations/suggestServices.ts` → Anthropic
+      Messages API via the API key, `SUGGEST_MODEL` default claude-haiku-4-5) which returns the
+      industry's typical services ranked MOST→LEAST profitable as a JSON array. The form shows
+      them as a numbered checkbox list with a top-left **Select all / Unselect all** toggle;
+      checking a box adds it to `f.services` (which also feeds the existing textarea), unchecking
+      removes it. `SuggestServicesInput` (industry required) + `api.suggestServices`.
+
 ## Verification commands
 
 ```bash

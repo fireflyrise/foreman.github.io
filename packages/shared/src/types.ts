@@ -279,6 +279,16 @@ export const WebCreatorInput = z.object({
 });
 export type WebCreatorInput = z.infer<typeof WebCreatorInput>;
 
+/** Ask the AI to suggest the typical services for an industry, ranked by profit. */
+export const SuggestServicesInput = z.object({
+  industry: z.string().min(1),
+  mainService: z.string().default(""),
+  city: z.string().default(""),
+  state: z.string().default(""),
+  businessType: z.string().default(""),
+});
+export type SuggestServicesInput = z.infer<typeof SuggestServicesInput>;
+
 /** Lenient variant for autosaving a half-filled form (no required fields). */
 export const WebCreatorDraftInput = WebCreatorInput.extend({
   companyName: z.string(),

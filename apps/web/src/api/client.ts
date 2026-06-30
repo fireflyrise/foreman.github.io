@@ -163,4 +163,9 @@ export const api = {
     req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/web-spec`, input),
   runWebCreator: (id: string, input?: WebCreatorInput) =>
     req<{ ok: boolean }>("POST", `/api/projects/${id}/web-creator/run`, input ?? {}),
+  suggestServices: (
+    id: string,
+    input: { industry: string; mainService?: string; city?: string; state?: string; businessType?: string },
+  ) =>
+    req<{ services: string[] }>("POST", `/api/projects/${id}/web-creator/suggest-services`, input),
 };
