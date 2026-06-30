@@ -331,6 +331,9 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       .projectType`; `ProjectDTO.projectType`; create route + serializer store it; client
       passes it. `ProjectView` opens to the matching module (web→Module 2, else Module 1) — the
       module toggle stays so you can still switch.
+- [x] Removed the Module 1/Module 2 toggle: now that a project has a fixed type, `ProjectView`
+      derives `module` from `project.projectType` (no switching) and renders only that module's
+      screens; replaced the toggle with a static "Software project" / "Web project" label.
 
 ## Verification commands
 
