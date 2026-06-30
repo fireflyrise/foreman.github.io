@@ -55,16 +55,32 @@ model Goal {
 }
 
 model Instruction {
-  id        String   @id @default(cuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  order     Int
-  text      String
-  status    String   @default("pending")
-  costUsd   Float?
-  createdAt DateTime @default(now())
+  id          String                  @id @default(cuid())
+  projectId   String
+  project     Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  order       Int
+  text        String
+  status      String                  @default("pending")
+  costUsd     Float?
+  createdAt   DateTime                @default(now())
+  attachments InstructionAttachment[]
 
   @@index([projectId, order])
+}
+
+// A file/photo attached to an instruction. Materialized to disk (outside the
+// git repo) at run time so the agent can read it and act on it.
+model InstructionAttachment {
+  id            String      @id @default(cuid())
+  instructionId String
+  instruction   Instruction @relation(fields: [instructionId], references: [id], onDelete: Cascade)
+  filename      String
+  mimeType      String
+  /** Base64-encoded file contents (no data: prefix). */
+  data          String
+  createdAt     DateTime    @default(now())
+
+  @@index([instructionId])
 }
 
 model Session {

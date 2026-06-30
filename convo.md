@@ -223,6 +223,20 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       non-terminal sessions stopped — in-memory sessions don't survive a redeploy (crash-
       resume still a TODO), so this prevents a dead "running" row with a no-op Stop button.
 
+- [x] Instruction attachments (files/photos per instruction, like Claude web): new
+      `InstructionAttachment` table (migration `5_instruction_attachments`) storing base64
+      (~20MB cap), 1:N from `Instruction`. UI (`InstructionList.tsx`): 📎 on each row to
+      attach, chips with ✕ to remove, and staging on the add-row (files attach to the next
+      instruction created). API: `POST/DELETE /api/projects/:id/instructions/:instrId/
+      attachments[/:attId]`, `AddAttachmentInput`, `api.addAttachment/deleteAttachment`,
+      `InstructionDTO.attachments` (metadata only — base64 never shipped to the list).
+      RUN-TIME: `AgentSession.dispatchInstruction` (sendNext is now async via this) calls
+      `materializeAttachments` to write the files to `<workspacesDir>/<projectId>__attachments/
+      <instructionId>/` (OUTSIDE the git repo so they're not auto-committed), then appends
+      their absolute paths + mime types to the instruction message so Claude Code can Read
+      them and act ("swap in this image", "follow this skill file"). Use case examples baked
+      into the UI helper text.
+
 ## Verification commands
 
 ```bash

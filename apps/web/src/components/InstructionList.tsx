@@ -27,6 +27,24 @@ const STATUS_STYLE: Record<string, string> = {
   skipped: "bg-gray-700 text-gray-500",
 };
 
+/** Read a File into base64 (without the `data:...;base64,` prefix). */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      const comma = res.indexOf(",");
+      resolve(comma >= 0 ? res.slice(comma + 1) : res);
+    };
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileIcon(mime: string): string {
+  return mime.startsWith("image/") ? "🖼" : "📄";
+}
+
 function Row({
   instr,
   projectId,
@@ -39,6 +57,7 @@ function Row({
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(instr.text);
+  const [busy, setBusy] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: instr.id });
 
@@ -58,6 +77,29 @@ function Row({
 
   async function remove() {
     await api.deleteInstruction(projectId, instr.id);
+    void qc.invalidateQueries({ queryKey: ["projects"] });
+  }
+
+  async function attach(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setBusy(true);
+    try {
+      for (const file of Array.from(files)) {
+        const dataBase64 = await fileToBase64(file);
+        await api.addAttachment(projectId, instr.id, {
+          filename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          dataBase64,
+        });
+      }
+      void qc.invalidateQueries({ queryKey: ["projects"] });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeAttachment(attId: string) {
+    await api.deleteAttachment(projectId, instr.id, attId);
     void qc.invalidateQueries({ queryKey: ["projects"] });
   }
 
@@ -99,11 +141,47 @@ function Row({
             {instr.text}
           </p>
         )}
+        {instr.attachments.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {instr.attachments.map((a) => (
+              <span
+                key={a.id}
+                className="inline-flex items-center gap-1 rounded bg-edge px-1.5 py-0.5 text-[11px] text-gray-200"
+                title={a.mimeType}
+              >
+                {fileIcon(a.mimeType)} <span className="max-w-[10rem] truncate">{a.filename}</span>
+                <button
+                  onClick={() => removeAttachment(a.id)}
+                  className="text-gray-500 hover:text-red-400"
+                  title="Remove attachment"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-      <span className={`rounded px-1.5 py-0.5 text-[10px] ${STATUS_STYLE[instr.status] ?? ""}`}>
+      <label
+        className={`mt-0.5 cursor-pointer px-1 text-gray-500 hover:text-blue-300 ${busy ? "opacity-40" : ""}`}
+        title="Attach files / photos"
+      >
+        📎
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => {
+            void attach(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      <span className={`mt-0.5 rounded px-1.5 py-0.5 text-[10px] ${STATUS_STYLE[instr.status] ?? ""}`}>
         {instr.status}
       </span>
-      <button onClick={remove} className="px-1 text-gray-500 hover:text-red-400" title="Delete">
+      <button onClick={remove} className="mt-0.5 px-1 text-gray-500 hover:text-red-400" title="Delete">
         ✕
       </button>
     </div>
@@ -113,14 +191,34 @@ function Row({
 export function InstructionList({ project }: { project: ProjectDTO }) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
+  const [staged, setStaged] = useState<File[]>([]);
+  const [adding, setAdding] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const items = project.instructions;
 
   async function add() {
     if (!text.trim()) return;
-    await api.addInstruction(project.id, text.trim());
-    setText("");
-    void qc.invalidateQueries({ queryKey: ["projects"] });
+    setAdding(true);
+    try {
+      const before = new Set(items.map((i) => i.id));
+      const res = await api.addInstruction(project.id, text.trim());
+      const created = res.project.instructions.find((i) => !before.has(i.id));
+      if (created && staged.length > 0) {
+        for (const file of staged) {
+          const dataBase64 = await fileToBase64(file);
+          await api.addAttachment(project.id, created.id, {
+            filename: file.name,
+            mimeType: file.type || "application/octet-stream",
+            dataBase64,
+          });
+        }
+      }
+      setText("");
+      setStaged([]);
+      void qc.invalidateQueries({ queryKey: ["projects"] });
+    } finally {
+      setAdding(false);
+    }
   }
 
   async function onDragEnd(e: DragEndEvent) {
@@ -142,7 +240,8 @@ export function InstructionList({ project }: { project: ProjectDTO }) {
       <h3 className="mb-1 text-sm font-semibold">Instructions</h3>
       <p className="mb-3 text-xs text-gray-400">
         Executed one at a time, top to bottom. The next instruction is sent only after the
-        current one finishes. Drag to reorder, click text to edit.
+        current one finishes. Drag to reorder, click text to edit. Attach files or photos with 📎
+        (e.g. an image to swap in, or a skill file to follow).
       </p>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -168,10 +267,45 @@ export function InstructionList({ project }: { project: ProjectDTO }) {
             if (e.key === "Enter") add();
           }}
         />
-        <Button onClick={add} disabled={!text.trim()}>
-          Add
+        <label
+          className="flex cursor-pointer items-center rounded-md border border-edge px-2 text-sm text-gray-300 hover:bg-edge"
+          title="Attach files / photos to this instruction"
+        >
+          📎
+          <input
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) setStaged((prev) => [...prev, ...Array.from(e.target.files!)]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <Button onClick={add} disabled={!text.trim() || adding}>
+          {adding ? "Adding…" : "Add"}
         </Button>
       </div>
+      {staged.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {staged.map((f, i) => (
+            <span
+              key={`${f.name}-${i}`}
+              className="inline-flex items-center gap-1 rounded bg-edge px-1.5 py-0.5 text-[11px] text-gray-200"
+            >
+              {fileIcon(f.type)} <span className="max-w-[10rem] truncate">{f.name}</span>
+              <button
+                onClick={() => setStaged((prev) => prev.filter((_, idx) => idx !== i))}
+                className="text-gray-500 hover:text-red-400"
+                title="Remove"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          <span className="self-center text-[11px] text-gray-500">attached to the next instruction you add</span>
+        </div>
+      )}
     </Panel>
   );
 }
