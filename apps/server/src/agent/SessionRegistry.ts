@@ -89,7 +89,33 @@ class SessionRegistryImpl {
 
   async stop(projectId: string): Promise<void> {
     const session = this.sessions.get(projectId);
-    if (session) await session.stop();
+    if (session) {
+      await session.stop();
+      return;
+    }
+    // No live session (e.g. the server restarted and lost it). Mark any
+    // non-terminal DB row for this project as stopped so the UI can recover —
+    // otherwise the console stays stuck on "running" with a dead Stop button.
+    await prisma.session
+      .updateMany({
+        where: { projectId, status: { notIn: ["stopped", "completed", "error"] } },
+        data: { status: "stopped", endedAt: new Date() },
+      })
+      .catch(() => undefined);
+  }
+
+  /**
+   * On boot, reconcile sessions that were "running" when the process died. In-
+   * memory sessions don't survive a restart (crash-resume isn't wired yet), so
+   * any non-terminal row is orphaned — mark it stopped so the UI isn't stuck.
+   */
+  async reconcileOnBoot(): Promise<void> {
+    await prisma.session
+      .updateMany({
+        where: { status: { notIn: ["stopped", "completed", "error"] } },
+        data: { status: "stopped", endedAt: new Date() },
+      })
+      .catch(() => undefined);
   }
 
   async resolveLimit(projectId: string, choice: "api" | "wait"): Promise<void> {

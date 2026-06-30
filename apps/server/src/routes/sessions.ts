@@ -154,12 +154,20 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     async (req, reply) => {
       const { id } = req.params as { id: string };
 
-      reply.raw.writeHead(200, {
+      // NOTE: `Connection` is a connection-specific header that is FORBIDDEN in
+      // HTTP/2 (RFC 7540 §8.1.2.2). Railway's edge serves over HTTP/2, so sending
+      // it makes the browser kill the stream with ERR_HTTP2_PROTOCOL_ERROR. Only
+      // set it on HTTP/1.x, where keep-alive actually matters.
+      const headers: Record<string, string> = {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
         "X-Accel-Buffering": "no",
-      });
+      };
+      if (req.raw.httpVersionMajor < 2) headers.Connection = "keep-alive";
+      reply.raw.writeHead(200, headers);
+      // Open the stream immediately and tell EventSource how soon to retry.
+      reply.raw.flushHeaders?.();
+      reply.raw.write("retry: 3000\n\n");
 
       const send = (event: AgentEvent) => {
         reply.raw.write(`event: ${event.type}\n`);
