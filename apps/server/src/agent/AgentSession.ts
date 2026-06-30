@@ -5,7 +5,12 @@ import type { AgentEvent, AuthMode, SessionStatus } from "@foreman/shared";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
 import { RepoManager } from "../git/RepoManager.js";
-import { openPullRequest, mergePullRequest } from "../integrations/github.js";
+import {
+  openPullRequest,
+  mergePullRequest,
+  getPrCiState,
+  updatePrBranch,
+} from "../integrations/github.js";
 import { fetchLatestLogs } from "../integrations/railway.js";
 import { createRailwayMcpServer } from "./mcp/railwayLogsTool.js";
 import { createLogoMcpServer } from "./mcp/logoTool.js";
@@ -15,6 +20,7 @@ import {
   buildAutonomyAppend,
   buildInstructionMessage,
   buildRailwayFixMessage,
+  buildCiFixMessage,
   type GoalContext,
 } from "./prompts.js";
 import { AsyncInbox } from "./AsyncInbox.js";
@@ -88,6 +94,15 @@ export class AgentSession {
   private static readonly MAX_RAILWAY_AUTOFIX = 2;
   /** Fixed wait after the final merge for Railway to build + deploy (ms). */
   private static readonly DEPLOY_WAIT_MS = 5 * 60 * 1000;
+
+  /** How many times we've auto-injected a CI fix for the current PR. */
+  private ciFixAttempts = 0;
+  /** Cap on automatic CI self-heal rounds before we leave the PR open. */
+  private static readonly MAX_CI_FIX = 2;
+  /** Max time to wait for a PR's CI checks to finish before giving up (ms). */
+  private static readonly PR_CI_WAIT_MS = 5 * 60 * 1000;
+  /** Poll interval while waiting for PR CI to settle (ms). */
+  private static readonly PR_CI_POLL_MS = 8000;
 
   constructor(args: StartArgs) {
     this.projectId = args.projectId;
@@ -426,10 +441,104 @@ export class AgentSession {
     }
 
     if (this.mergePolicy === "PER_INSTRUCTION" && this.prNumber !== null) {
-      await mergePullRequest(this.userId, owner, repo, this.prNumber, "squash");
-      this.emit({ type: "git", action: "merge", detail: `Merged PR #${this.prNumber} into main` });
-      this.prNumber = null; // next instruction opens a fresh PR off updated main
+      await this.mergeWhenGreen(owner, repo, this.prNumber);
     }
+  }
+
+  /**
+   * Wait for a PR's CI to finish, then merge it. On green → squash-merge and
+   * clear the PR pointer. On red → inject a fix instruction (self-heal) and
+   * leave the PR open; the agent repairs it and CI re-runs. On conflict /
+   * timeout / repeated failure → leave the PR open with a clear log so it can
+   * be handled manually instead of merging broken code.
+   */
+  private async mergeWhenGreen(owner: string, repo: string, prNumber: number): Promise<void> {
+    const verdict = await this.waitForPrReady(owner, repo, prNumber);
+
+    if (verdict === "green") {
+      try {
+        await mergePullRequest(this.userId, owner, repo, prNumber, "squash");
+        this.emit({ type: "git", action: "merge", detail: `Merged PR #${prNumber} into main` });
+        this.prNumber = null; // next instruction opens a fresh PR off updated main
+        this.ciFixAttempts = 0;
+      } catch (e) {
+        this.emit({
+          type: "log",
+          level: "warn",
+          text: `PR #${prNumber} passed CI but the merge was rejected (${(e as Error).message}). Leaving it open.`,
+        });
+      }
+      return;
+    }
+
+    if (verdict.kind === "red") {
+      if (this.ciFixAttempts < AgentSession.MAX_CI_FIX) {
+        this.ciFixAttempts += 1;
+        this.emit({
+          type: "log",
+          level: "error",
+          text: `PR #${prNumber} CI failed — injecting a fix (CI self-heal ${this.ciFixAttempts}/${AgentSession.MAX_CI_FIX}).`,
+        });
+        // Run the fix BEFORE any remaining queued instruction.
+        this.queue.unshift({ id: null, text: buildCiFixMessage(verdict.failures) });
+        this.total += 1;
+      } else {
+        this.emit({
+          type: "log",
+          level: "warn",
+          text: `PR #${prNumber} CI still failing after ${AgentSession.MAX_CI_FIX} fix attempts — leaving it open for manual review.`,
+        });
+      }
+      return;
+    }
+
+    // conflict | timeout — don't merge broken/unverified code.
+    this.emit({
+      type: "log",
+      level: "warn",
+      text:
+        verdict.kind === "conflict"
+          ? `PR #${prNumber} has a merge conflict — leaving it open for manual resolution.`
+          : `PR #${prNumber} CI didn't finish within the wait window — leaving it open.`,
+    });
+  }
+
+  /** Poll a PR until its CI settles or we time out. */
+  private async waitForPrReady(
+    owner: string,
+    repo: string,
+    prNumber: number,
+  ): Promise<"green" | { kind: "red"; failures: Array<{ name: string; summary: string }> } | { kind: "conflict" } | { kind: "timeout" }> {
+    const deadline = AgentSession.PR_CI_WAIT_MS;
+    let waited = 0;
+    while (waited <= deadline) {
+      if (this.stopped) return { kind: "timeout" };
+      let state;
+      try {
+        state = await getPrCiState(this.userId, owner, repo, prNumber);
+      } catch {
+        await this.sleep(AgentSession.PR_CI_POLL_MS);
+        waited += AgentSession.PR_CI_POLL_MS;
+        continue;
+      }
+
+      if (state.mergeableState === "dirty") return { kind: "conflict" };
+      if (state.mergeableState === "behind") {
+        await updatePrBranch(this.userId, owner, repo, prNumber);
+        await this.sleep(AgentSession.PR_CI_POLL_MS);
+        waited += AgentSession.PR_CI_POLL_MS;
+        continue;
+      }
+      if (state.ci === "failure") return { kind: "red", failures: state.failures };
+      // No CI configured: merge as soon as GitHub says it's mergeable.
+      if (state.ci === "none" && state.mergeable === true) return "green";
+      if (state.ci === "success" && state.mergeable !== false) return "green";
+
+      // pending, or mergeability still computing — wait and retry.
+      await this.sleep(AgentSession.PR_CI_POLL_MS);
+      waited += AgentSession.PR_CI_POLL_MS;
+    }
+    return { kind: "timeout" };
   }
 
   private sendNext(): void {
@@ -503,16 +612,13 @@ export class AgentSession {
   private async maybeMergeAtEnd(): Promise<void> {
     if (this.mergePolicy === "PER_SESSION" && this.prNumber !== null) {
       const [owner, repo] = await this.repoFullName();
-      await mergePullRequest(this.userId, owner, repo, this.prNumber, "squash").catch((e) => {
-        this.emit({ type: "log", level: "warn", text: `Final merge failed: ${(e as Error).message}` });
-        void recordError({
-          errorType: ErrorType.AGENT_GIT_MERGE_FAILURE,
-          error: e,
-          project: this.projectId,
-          context: { prNumber: this.prNumber, branchName: this.branchName },
-        });
-      });
-      this.emit({ type: "git", action: "merge", detail: `Merged PR #${this.prNumber} into main` });
+      await this.mergeWhenGreen(owner, repo, this.prNumber);
+      // If CI failed and a fix was queued, resume the loop to repair it instead
+      // of finalizing — it will come back here once the fix lands.
+      if (this.queue.length > 0) {
+        this.sendNext();
+        return;
+      }
     }
 
     // After the final merge, verify the deployment succeeded. If a fix was

@@ -117,3 +117,72 @@ export async function mergePullRequest(
   const octokit = await getOctokit(userId);
   await octokit.pulls.merge({ owner, repo, pull_number: prNumber, merge_method: method });
 }
+
+export interface PrCiState {
+  /** GitHub's computed mergeability; null while still being calculated. */
+  mergeable: boolean | null;
+  /** clean | unstable | blocked | behind | dirty | draft | unknown | has_hooks */
+  mergeableState: string;
+  /** Rolled-up CI verdict across check-runs AND legacy commit statuses. */
+  ci: "none" | "pending" | "success" | "failure";
+  /** Names + summaries of failing checks, for self-heal context. */
+  failures: Array<{ name: string; summary: string }>;
+}
+
+/** Read a PR's mergeability and combined CI status (check-runs + statuses). */
+export async function getPrCiState(
+  userId: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<PrCiState> {
+  const octokit = await getOctokit(userId);
+  const { data: pr } = await octokit.pulls.get({ owner, repo, pull_number: prNumber });
+  const sha = pr.head.sha;
+
+  const [runsRes, statusRes] = await Promise.all([
+    octokit.checks.listForRef({ owner, repo, ref: sha, per_page: 100 }),
+    octokit.repos.getCombinedStatusForRef({ owner, repo, ref: sha }),
+  ]);
+
+  const failures: Array<{ name: string; summary: string }> = [];
+  let pending = false;
+  let any = false;
+
+  for (const r of runsRes.data.check_runs) {
+    any = true;
+    if (r.status !== "completed") {
+      pending = true;
+      continue;
+    }
+    if (["failure", "timed_out", "cancelled", "action_required"].includes(r.conclusion ?? "")) {
+      failures.push({ name: r.name, summary: r.output?.summary?.slice(0, 800) ?? r.conclusion ?? "failed" });
+    }
+  }
+  for (const s of statusRes.data.statuses) {
+    any = true;
+    if (s.state === "pending") pending = true;
+    else if (s.state === "failure" || s.state === "error") {
+      failures.push({ name: s.context, summary: s.description?.slice(0, 800) ?? s.state });
+    }
+  }
+
+  let ci: PrCiState["ci"];
+  if (!any) ci = "none";
+  else if (failures.length > 0) ci = "failure";
+  else if (pending) ci = "pending";
+  else ci = "success";
+
+  return { mergeable: pr.mergeable, mergeableState: pr.mergeable_state ?? "unknown", ci, failures };
+}
+
+/** Bring a PR branch up to date with its base (resolves "behind"). */
+export async function updatePrBranch(
+  userId: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<void> {
+  const octokit = await getOctokit(userId);
+  await octokit.pulls.updateBranch({ owner, repo, pull_number: prNumber }).catch(() => undefined);
+}

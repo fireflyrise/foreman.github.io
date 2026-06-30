@@ -237,6 +237,20 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       them and act ("swap in this image", "follow this skill file"). Use case examples baked
       into the UI helper text.
 
+- [x] CI-gated PR merge + self-heal (fixes "PR opened but never merged/closed"): the old
+      flow opened a PR then IMMEDIATELY squash-merged in the same step — before GitHub had
+      computed mergeability or CI had passed — so the merge 405'd, was swallowed by the
+      `.catch`, and the PR was left open. New `AgentSession.mergeWhenGreen` + `waitForPrReady`
+      poll the PR (`getPrCiState`: check-runs + commit statuses + mergeable_state) up to
+      `PR_CI_WAIT_MS` (5 min, every 8s). GREEN → squash-merge + clear pointer. RED → inject a
+      CI-fix instruction (`buildCiFixMessage`) at the FRONT of the queue so the agent repairs
+      it and CI re-runs (bounded by `MAX_CI_FIX`=2). "behind" → `updatePrBranch` then retry.
+      conflict/timeout/exhausted → leave PR open + log (never merge broken code). Applies to
+      PER_INSTRUCTION (handleGitForInstruction) and PER_SESSION (maybeMergeAtEnd, which now
+      resumes the loop if a CI fix was queued). NOTE: also, redeploying Foreman kills the
+      in-memory session (no crash-resume yet), which can orphan an open project PR — that's a
+      separate known gap.
+
 ## Verification commands
 
 ```bash
