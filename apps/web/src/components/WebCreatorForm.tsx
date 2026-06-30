@@ -100,6 +100,9 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
   const [genBusy, setGenBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [suggested, setSuggested] = useState<string[]>([]);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestErr, setSuggestErr] = useState<string | null>(null);
 
   function up<K extends keyof WebCreatorInput>(key: K, value: WebCreatorInput[K]) {
     setF((prev) => ({ ...prev, [key]: value }));
@@ -154,6 +157,49 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
 
   const valid =
     f.companyName.trim() && f.industry.trim() && /^#[0-9a-fA-F]{6}$/.test(f.accentHex);
+
+  // ── AI service suggestions (ranked most → least profitable) ──
+  async function suggestServices() {
+    if (!f.industry.trim()) return;
+    setSuggesting(true);
+    setSuggestErr(null);
+    try {
+      const { services } = await api.suggestServices(project.id, {
+        industry: f.industry,
+        mainService: f.mainService,
+        city: f.city,
+        state: f.state,
+        businessType: f.businessType,
+      });
+      setSuggested(services);
+    } catch (e) {
+      setSuggestErr((e as Error).message);
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  const selectedServices = new Set(f.services.map((s) => s.trim()).filter(Boolean));
+  const allSuggestedSelected =
+    suggested.length > 0 && suggested.every((s) => selectedServices.has(s));
+
+  function toggleService(name: string) {
+    if (selectedServices.has(name)) {
+      up("services", f.services.filter((s) => s.trim() !== name));
+    } else {
+      up("services", [...f.services.filter((s) => s.trim()), name]);
+    }
+  }
+
+  function toggleAllSuggested() {
+    if (allSuggestedSelected) {
+      up("services", f.services.filter((s) => !suggested.includes(s.trim())));
+    } else {
+      const merged = f.services.map((s) => s.trim()).filter(Boolean);
+      for (const s of suggested) if (!merged.includes(s)) merged.push(s);
+      up("services", merged);
+    }
+  }
 
   function buildPayload(): WebCreatorInput {
     return {
@@ -250,8 +296,47 @@ export function WebCreatorForm({ project }: { project: ProjectDTO }) {
 
         <Section title="2 · Services">
           <Field label="Main service (homepage theme)">
-            <TextInput value={f.mainService} onChange={(e) => up("mainService", e.target.value)} placeholder="e.g. Plumbing Services" />
+            <div className="flex gap-2">
+              <TextInput value={f.mainService} onChange={(e) => up("mainService", e.target.value)} placeholder="e.g. Plumbing Services" />
+              <Button
+                variant="subtle"
+                onClick={suggestServices}
+                disabled={!f.industry.trim() || suggesting}
+                title={f.industry.trim() ? "AI-research the top services for this industry" : "Enter an industry first"}
+                className="shrink-0"
+              >
+                {suggesting ? "Researching…" : "✨ Suggest services"}
+              </Button>
+            </div>
           </Field>
+          {suggestErr && <p className="text-[11px] text-red-300">{suggestErr}</p>}
+          {suggested.length > 0 && (
+            <div className="rounded-md border border-edge p-2">
+              <div className="mb-1.5 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={toggleAllSuggested}
+                  className="text-[11px] font-medium text-blue-400 hover:underline"
+                >
+                  {allSuggestedSelected ? "Unselect all" : "Select all"}
+                </button>
+                <span className="text-[11px] text-gray-500">ranked most → least profitable</span>
+              </div>
+              <div className="space-y-1">
+                {suggested.map((s, i) => (
+                  <label key={s} className="flex items-center gap-2 text-sm text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={selectedServices.has(s)}
+                      onChange={() => toggleService(s)}
+                    />
+                    <span className="w-5 text-right text-[11px] text-gray-500">{i + 1}.</span>
+                    {s}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <Field label="Service pages (one per line)">
             <TextArea
               rows={4}

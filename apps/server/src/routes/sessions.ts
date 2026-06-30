@@ -1,9 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import type { AgentEvent, WebCreatorInput as WebCreatorInputType } from "@foreman/shared";
-import { ResolveLimitInput, WebCreatorInput } from "@foreman/shared";
+import { ResolveLimitInput, WebCreatorInput, SuggestServicesInput } from "@foreman/shared";
 import { getUserId, requireAuth } from "../auth.js";
 import { prisma } from "../db.js";
 import { saveWebSpec } from "../webspec.js";
+import { suggestServices } from "../integrations/suggestServices.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
 import { buildWebCreatorInstructions } from "../agent/prompts.js";
 import { writePlaybookForProject, materializeWebAssets } from "../agent/webCreatorPlaybook.js";
@@ -123,6 +124,24 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
           context: { companyName: spec.companyName, industry: spec.industry },
         });
         return reply.code(400).send({ error: (err as Error).message });
+      }
+    },
+  );
+
+  // AI: suggest the typical services for the industry, ranked by profitability.
+  app.post(
+    "/api/projects/:id/web-creator/suggest-services",
+    { preHandler: requireAuth },
+    async (req, reply) => {
+      const parsed = SuggestServicesInput.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+      }
+      try {
+        const services = await suggestServices(parsed.data);
+        return { services };
+      } catch (e) {
+        return reply.code(400).send({ error: (e as Error).message });
       }
     },
   );

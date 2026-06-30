@@ -51,6 +51,8 @@ export const env = {
   // Empty = let the Claude Code CLI pick its default model (passing an unknown
   // model id exits the process). Override with a valid alias/id via AGENT_MODEL.
   agentModel: optional("AGENT_MODEL", ""),
+  // Fast model used for the "suggest services" helper (Anthropic Messages API).
+  suggestModel: optional("SUGGEST_MODEL", "claude-haiku-4-5-20251001"),
   maxConcurrentSessions: int("MAX_CONCURRENT_SESSIONS", 3),
   sessionCostLimitUsd: num("SESSION_COST_LIMIT_USD", 10),
 
