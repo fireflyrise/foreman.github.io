@@ -335,6 +335,14 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       derives `module` from `project.projectType` (no switching) and renders only that module's
       screens; replaced the toggle with a static "Software project" / "Web project" label.
 
+- [x] Web Creator action placement: the "Generate website" button was buried at the bottom of
+      the long form and unclear about whether it runs. Moved Generate + Save into a STICKY
+      header bar at the top of the Web Creator panel (stays visible while scrolling), renamed
+      to "▶ Generate & build" / "Save draft", with helper text clarifying that Generate seeds
+      the build steps and STARTS THE RUN IMMEDIATELY (it does — `run()` calls
+      `api.runWebCreator` which seeds instructions + starts the session). Removed the old
+      bottom action block.
+
 ## Verification commands
 
 ```bash
