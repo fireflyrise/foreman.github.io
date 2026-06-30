@@ -91,6 +91,8 @@ export const api = {
     req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/auth-mode`, { authMode }),
   setWebAuthMode: (id: string, webAuthMode: "subscription" | "api") =>
     req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/web-auth-mode`, { webAuthMode }),
+  setMergePolicy: (id: string, mergePolicy: "PER_INSTRUCTION" | "PER_SESSION" | "MANUAL") =>
+    req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/merge-policy`, { mergePolicy }),
   setProjectRailway: (
     id: string,
     input: {

@@ -296,6 +296,12 @@ export const SetWebAuthModeInput = z.object({
 });
 export type SetWebAuthModeInput = z.infer<typeof SetWebAuthModeInput>;
 
+/** Set when the session branch merges to main. */
+export const SetMergePolicyInput = z.object({
+  mergePolicy: MergePolicy,
+});
+export type SetMergePolicyInput = z.infer<typeof SetMergePolicyInput>;
+
 /** Per-project Railway target (overrides the account-wide defaults). */
 export const SetProjectRailwayInput = z.object({
   railwayProjectId: z.string().nullable().optional(),

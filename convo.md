@@ -289,6 +289,18 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       instruction diff off current main; no divergence. (Session branch is disposable, so the
       hard reset + force-push is safe.)
 
+- [x] Merge-after-all-instructions default + selector: changed the default `mergePolicy` to
+      **PER_SESSION** (one PR, merged once after ALL instructions complete) — schema default +
+      migration `6_default_merge_per_session`. Added `SetMergePolicyInput`, PUT
+      `/api/projects/:id/merge-policy`, `api.setMergePolicy`, and a "merge:" dropdown in the
+      ProjectView header (after all instructions / after each instruction / manual) so existing
+      projects (e.g. adspulse, still PER_INSTRUCTION) can switch. BUGFIX needed for this to
+      work: PER_SESSION used to open the PR as a DRAFT, and a draft PR can't be merged — the
+      end-of-session `mergeWhenGreen` would have failed. Now PRs are never opened as draft
+      (Foreman merges them itself). PER_SESSION flow with the recent changes: each instruction
+      returns "noop" (proceed, mark done), one PR accumulates all commits, `maybeMergeAtEnd`
+      runs `mergeWhenGreen` once (CI-gated + self-heal), then the Railway deploy check.
+
 ## Verification commands
 
 ```bash
