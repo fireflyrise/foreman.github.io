@@ -441,6 +441,12 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       so cost resets to 0 (fresh $50). Only not-done instructions are fed. Cost-cap log now says
       "Press Run to continue where it left off with a fresh budget."
 
+- [x] Agent Console info line: a persistent row under the header shows **🔑 tokens: <source>**
+      (Max subscription in bright emerald / API key in bright amber — the source is the bright
+      part) and **🌿 branch: <name>**. Token source = live `auth_mode` SSE event (`useAgentStream`
+      now returns `authMode`), falling back to the project's configured billing; branch =
+      `project.activeSession.branchName`. Surfaces both without scrolling the log.
+
 ## Verification commands
 
 ```bash
