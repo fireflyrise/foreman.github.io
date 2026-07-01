@@ -54,7 +54,9 @@ export const env = {
   // Fast model used for the "suggest services" helper (Anthropic Messages API).
   suggestModel: optional("SUGGEST_MODEL", "claude-haiku-4-5-20251001"),
   maxConcurrentSessions: int("MAX_CONCURRENT_SESSIONS", 3),
-  sessionCostLimitUsd: num("SESSION_COST_LIMIT_USD", 10),
+  // Foreman's per-session API cost cap (runaway-spend kill switch). Applies to
+  // API-billed runs only. Set to 0 to disable. Not related to any Claude limit.
+  sessionCostLimitUsd: num("SESSION_COST_LIMIT_USD", 50),
 
   githubClientId: optional("GITHUB_CLIENT_ID"),
   githubClientSecret: optional("GITHUB_CLIENT_SECRET"),

@@ -452,12 +452,18 @@ export class AgentSession {
       this.mergingInstruction = null;
     }
 
-    // Cost ceiling.
-    if (this.totalCostUsd >= env.sessionCostLimitUsd) {
+    // Cost ceiling — Foreman's own runaway-spend kill switch. Only enforce it
+    // for API-billed runs (real dollars); on the Max subscription the reported
+    // "cost" isn't actual spend, so a dollar cap there would kill runs early.
+    if (
+      this.effectiveMode() === "api" &&
+      env.sessionCostLimitUsd > 0 &&
+      this.totalCostUsd >= env.sessionCostLimitUsd
+    ) {
       this.emit({
         type: "log",
         level: "warn",
-        text: `Cost limit reached ($${this.totalCostUsd.toFixed(2)} ≥ $${env.sessionCostLimitUsd}). Stopping.`,
+        text: `Foreman's per-session cost cap reached ($${this.totalCostUsd.toFixed(2)} ≥ $${env.sessionCostLimitUsd}). Stopping. Raise or disable it with the SESSION_COST_LIMIT_USD env var (0 = no cap).`,
       });
       await this.stop();
       return;
