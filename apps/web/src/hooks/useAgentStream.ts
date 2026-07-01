@@ -97,11 +97,13 @@ export function useAgentStream(projectId: string | null, nonce: number) {
   const qc = useQueryClient();
   const [lines, setLines] = useState<ConsoleLine[]>([]);
   const [status, setStatus] = useState<string>("idle");
+  const [authMode, setAuthMode] = useState<string | null>(null);
   const counter = useRef(0);
 
   useEffect(() => {
     if (!projectId) return;
     setLines([]);
+    setAuthMode(null);
     const source = new EventSource(`/api/projects/${projectId}/session/stream`, {
       withCredentials: true,
     });
@@ -112,6 +114,7 @@ export function useAgentStream(projectId: string | null, nonce: number) {
         try {
           const event = JSON.parse(e.data) as AgentEvent;
           if (event.type === "session_status") setStatus(event.status);
+          if (event.type === "auth_mode") setAuthMode(event.mode);
           // Keep the instruction badges in sync live (the list is otherwise
           // only refreshed on refetch/refresh).
           if (event.type === "instruction_status") {
@@ -144,5 +147,5 @@ export function useAgentStream(projectId: string | null, nonce: number) {
   // Clear only the on-screen lines (view-only; a refresh replays history).
   const clear = useCallback(() => setLines([]), []);
 
-  return { lines, status, clear };
+  return { lines, status, authMode, clear };
 }

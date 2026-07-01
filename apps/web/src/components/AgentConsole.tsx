@@ -22,8 +22,16 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
   const qc = useQueryClient();
   const [nonce, setNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const { lines, status, clear } = useAgentStream(project.id, nonce);
+  const { lines, status, authMode, clear } = useAgentStream(project.id, nonce);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const branch = project.activeSession?.branchName ?? null;
+  // Where the tokens come from: the live session's effective mode if streaming,
+  // else the project's configured billing for this module.
+  const effectiveMode =
+    authMode ?? (project.projectType === "web" ? project.webAuthMode : project.authMode);
+  const tokenLabel = effectiveMode === "api" ? "API key (pay-as-you-go)" : "Max subscription";
+  const tokenColor = effectiveMode === "api" ? "text-amber-300" : "text-emerald-300";
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
@@ -120,6 +128,17 @@ export function AgentConsole({ project }: { project: ProjectDTO }) {
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-400">
+        <span>
+          🔑 tokens: <span className={`font-semibold ${tokenColor}`}>{tokenLabel}</span>
+        </span>
+        {branch && (
+          <span>
+            🌿 branch: <span className="font-mono text-gray-200">{branch}</span>
+          </span>
+        )}
       </div>
 
       {error && <p className="mb-2 text-[11px] text-amber-300">{error}</p>}
