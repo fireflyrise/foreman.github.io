@@ -59,6 +59,22 @@ export class RepoManager {
     await git.pull("origin", this.defaultBranch);
   }
 
+  /**
+   * Check out an existing session branch (with its prior committed work) to
+   * resume on it. Returns false if the branch no longer exists on origin.
+   */
+  async checkoutExisting(branch: string): Promise<boolean> {
+    const git = this.git();
+    await git.fetch("origin", branch).catch(() => undefined);
+    try {
+      // Recreate the local branch at origin's tip and check it out.
+      await git.checkout(["-B", branch, `origin/${branch}`]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /** Create and check out a fresh session branch off the default branch. */
   async createSessionBranch(slug: string): Promise<string> {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");

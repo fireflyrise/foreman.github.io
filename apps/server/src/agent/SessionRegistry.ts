@@ -55,7 +55,11 @@ class SessionRegistryImpl {
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      include: { goal: true, instructions: { orderBy: { order: "asc" } } },
+      include: {
+        goal: true,
+        instructions: { orderBy: { order: "asc" } },
+        sessions: { orderBy: { startedAt: "desc" }, take: 1 },
+      },
     });
     if (!project) throw new Error("Project not found.");
 
@@ -63,6 +67,13 @@ class SessionRegistryImpl {
     if (pending.length === 0) {
       throw new Error("No pending instructions to run.");
     }
+
+    // Resume: if some instructions already finished (e.g. a cost-cap/manual
+    // stop mid-run), continue the prior session's branch instead of redoing
+    // completed work on a fresh branch.
+    const someDone = project.instructions.some((i) => i.status === "done");
+    const lastBranch = project.sessions[0]?.branchName;
+    const resumeBranch = someDone && lastBranch ? lastBranch : undefined;
 
     const goal: GoalContext = goalOverride ?? {
       mainGoal: project.goal?.mainGoal ?? "",
@@ -80,6 +91,7 @@ class SessionRegistryImpl {
       goal,
       instructions: pending.map((i) => ({ id: i.id, text: i.text })),
       authMode,
+      resumeBranch,
     });
 
     this.sessions.set(projectId, session);

@@ -430,6 +430,17 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       disables the cap; (4) clearer log message naming the env var. Set `SESSION_COST_LIMIT_USD`
       in Railway to tune/disable.
 
+- [x] Resume where it left off (cost-cap / stop mid-run) instead of restarting. Root cause of
+      "restarts from instruction 1": WEB Run (`/web-creator/run`) always `deleteMany`+reseeds.
+      Now: (a) web run RESUMES (skips reseed) when there's partial progress (some done + some
+      pending) — still (re)writes playbook + asset files to their stable paths; (b)
+      `SessionRegistry.start` detects resume (some done + a prior `Session.branchName`) and
+      passes `resumeBranch`; (c) `AgentSession.start` continues on that branch via
+      `RepoManager.checkoutExisting` (falls back to a fresh branch if it was deleted, e.g. after
+      a PER_INSTRUCTION merge where the work is already on main); (d) each Run is a NEW session
+      so cost resets to 0 (fresh $50). Only not-done instructions are fed. Cost-cap log now says
+      "Press Run to continue where it left off with a fresh budget."
+
 ## Verification commands
 
 ```bash
