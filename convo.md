@@ -456,6 +456,59 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       covers BOTH languages. To get it on an existing site: re-run — a fully-completed build
       reseeds with the new steps (a partial build resumes the old ones).
 
+- [x] Fix weird generated images (logo/brand text baked into hero & section photos, e.g.
+      fenixwebdesign.com had the phoenix logo + "Fenix WEB DESIGN" text in the middle of the
+      hero). Root cause: the only image tool the agent had was `generate_logo`, and
+      `generateLogo()` in `gemini.ts` HARD-prepends "Design a clean, modern, professional
+      vector-style logo. Company name: …" — so when the agent used it for a hero/section photo
+      it got a logo with the brand name baked in. Fixes:
+      (1) `gemini.ts` — new `generateImage()` for photographs: never injects logo/company-name
+          language, hard-appends "clean PHOTOGRAPH … absolutely NO text/letters/logos/brand
+          names/watermarks; clothing plain with no printed logos".
+      (2) `logoTool.ts` MCP — added a `generate_image` tool (photos) alongside `generate_logo`
+          (logo/favicon ONLY); descriptions now steer the agent to the right one.
+      (3) `playbook/webcreator.md` — CRITICAL rule that every site photo is text/logo-free
+          (branding via HTML/CSS only), tool-usage note (generate_image for photos, generate_logo
+          for the mark only), strengthened MANDATORY restriction wording, and removed "branded
+          uniform/workwear/polo" from example prompts (→ "plain unbranded …", which invited logos).
+      (4) `prompts.ts` — final-pass step now spells out the clean-photo rule + which tool to use.
+      Follow-up (screenshot showed 2 service cards using the Fenix LOGO as the card image
+      instead of a photo — i.e. the logo dropped into photo slots as a fallback): added a
+      CRITICAL rule that the logo lives ONLY in header/footer, is NEVER a hero/about/service/
+      banner/OG image, and must NOT be used as a placeholder when a photo fails (retry or use a
+      photographic placeholder instead); every image slot needs its own distinct photo; final
+      pass verifies no non-header/footer image references the logo file. In `webcreator.md`
+      image rules + `prompts.ts` final step.
+      Follow-up 2 (user clarified: those phoenix marks were AGENT-GENERATED logos — the client
+      had UPLOADED their own logo, which the agent ignored, then invented a new logo and used it
+      as service-card images): root cause was the agent calling `generate_logo` off-playbook.
+      Added hard rules: if the brief provides a logo, use THAT EXACT file unchanged in
+      header/footer, NEVER generate/redraw/recreate it or call `generate_logo`; if no logo,
+      render a styled TEXT logo (not a generated one). Enforced in `webcreator.md` logo-handling
+      rules, `logoTool.ts` generate_logo description ("only when client provided NO logo"), and
+      `prompts.ts` step-1 image-assets note.
+      Follow-up 3 (user: header/footer logo is correct, but the agent GENERATES extra logos and
+      inserts them all over — e.g. a giant faded "FENIX WEB DESIGN" phoenix watermark ghosted
+      behind the hero text). Data flow is fine (logo reaches the agent); the defect is the agent
+      inventing logos and using them as decoration. Added a CRITICAL rule forbidding any large/
+      faded/oversized logo or business-name graphic as a background/watermark behind the hero or
+      any section — brand appears exactly twice (small header logo + footer logo); hero bg is a
+      photo or solid/gradient, never the logo. In `webcreator.md` image rules + `prompts.ts`
+      final-pass step. Net: PR #52 stops the agent generating logos at all (logo provided) and
+      stops it placing any logo into hero/section/card/OG/watermark slots.
+      Follow-up 4 (user: most pages' services sections are missing their images). ROOT CAUSE:
+      playbook Step 6.6 was written for INTERACTIVE use — it told the agent to ASK the user
+      "do you have a .env with GEMINI_API_KEY?" and "wait for confirmation", and to generate
+      images via a Python script needing that .env. But Foreman runs FULLY AUTONOMOUSLY (no user,
+      asking is forbidden), so the gate could never be satisfied → image generation skipped/half
+      done → broken/missing <img> tags. Fix: rewrote Step 6.6 Step A to be autonomous with the
+      already-authenticated `generate_image` MCP tool (server-side Gemini key, no .env/pip/user
+      setup) as the PREFERRED path; Python script only as a fallback if a key is already present
+      non-interactively; NEVER ask, never block. Non-negotiable: every <img>/background-image
+      must resolve to a real file — generate substitutes for any that fail, never ship broken
+      images. Also `prompts.ts`: service-page step now generates each card's image, and the
+      final-pass step walks every page verifying every image file exists (generating any missing).
+
 ## Verification commands
 
 ```bash

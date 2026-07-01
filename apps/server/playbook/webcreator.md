@@ -237,10 +237,11 @@ Notes on these inputs:
 - Default fonts are `FONT_HEADING` = **Montserrat** (headings, weight 800, capitalized) and `FONT_BODY` = **Open Sans** (body). Use whatever the brief specifies; load both from Google Fonts.
 
 **Logo handling rules:**
+- **⚠️ If the brief provides a logo (URL, filename, or uploaded file): use THAT EXACT file, unchanged, as the logo everywhere it appears (header + footer). NEVER generate, redraw, recreate, re-imagine, "clean up", or "improve" the client's logo, and NEVER call `generate_logo` — the client already gave you their brand mark and it is the only correct one. Inventing a different logo is a serious defect.**
 - If a URL is provided: use it directly in `<img src="URL">`
 - If a filename is provided: reference it as `images/FILENAME`
 - If uploaded: treat as `images/FILENAME` using the uploaded file's name
-- If none: render styled text logo using `BUSINESS_NAME` in `FONT_HEADING` and `--color-primary`. Add HTML comment: `<!-- Replace with <img src="images/logo.png"> once logo is ready -->`
+- If none is provided: render a styled TEXT logo using `BUSINESS_NAME` in `FONT_HEADING` and `--color-primary`. Add HTML comment: `<!-- Replace with <img src="images/logo.png"> once logo is ready -->`. Do NOT generate a logo image — a text logo is the correct placeholder. Only ever use `generate_logo` if the brief has no logo AND explicitly asks you to create one.
 
 **Favicon handling rules:**
 
@@ -1053,7 +1054,7 @@ All pages use the fixed layout defined above. Build sections in this exact order
 
    **Example prompts:**
    - Plumbing: *"A friendly male plumber in a clean uniform kneeling beside a kitchen sink in a bright modern home, smiling confidently at the camera. Warm natural light. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
-   - HVAC: *"A professional HVAC technician in branded workwear inspecting an air conditioning unit on the side of a suburban home, bright sunny day. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
+   - HVAC: *"A professional HVAC technician in a plain unbranded work uniform inspecting an air conditioning unit on the side of a suburban home, bright sunny day. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
    - Flower delivery: *"An elegantly dressed female florist arranging a large bouquet of fresh roses and greenery on a marble countertop in a bright studio. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
 
 5. **Reviews Section**
@@ -2535,32 +2536,16 @@ Thumbs.db
 
 ## Step 6.6: Image Generation with Google Gemini
 
-All website images are AI-generated using the **latest Google Gemini image generation model** via a Python script included with the skill. No stock photos, no placeholders — every image is purpose-built for the business, industry, and city.
+All website images are AI-generated using Google Gemini. No stock photos, no broken/missing images, no empty placeholders — every image slot on every page must end up with a real, purpose-built image file that loads.
 
-### Step A — Validate .env Before Anything Else
+### Step A — How to generate images (AUTONOMOUS — do NOT ask the user)
 
-**MANDATORY: Before generating the images manifest, before writing any HTML, Claude must verify the following with the user:**
+**You are running fully autonomously. There is NO user to answer questions and NO interactive `.env` setup step. Never ask about a `GEMINI_API_KEY`, never wait for confirmation, and never block the build on a missing key.** Two paths are available, in priority order:
 
-Ask:
-> *"Before I generate your images, I need to check a couple of things:*
-> 1. *Do you have a `.env` file in your project folder?*
-> 2. *Does it contain a `GEMINI_API_KEY` entry with a valid Google Gemini API key?*
->
-> *The `.env` file should look like this:*
-> ```
-> GEMINI_API_KEY=AIzaSy...your_key_here
-> ```
-> *If you don't have one yet, go to [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey) to generate a free key, then create the `.env` file in your project folder.*"
+1. **PREFERRED — the `generate_image` MCP tool (already authenticated).** The orchestrator exposes a `generate_image` tool backed by a server-side Gemini key — it needs no `.env`, no `pip install`, and no user setup. Call it for EVERY photographic image the site needs (hero, about, each service card, banner, steps, OG). It returns a base64 data URL; decode the part after the comma and write it to the correct `images/FILENAME` file. Use `generate_logo` ONLY if no logo was provided (see logo rules) — never for photos. This is the reliable path; use it by default.
+2. **Fallback — the Python script (`scripts/generate_images.py`).** Only if a working `GEMINI_API_KEY` is already present in the environment/`.env` WITHOUT any user interaction. If the key is absent, do NOT stop and do NOT ask — fall back to path 1 (the MCP tool).
 
-**Wait for confirmation before proceeding.** Do not generate the manifest or any images until the user confirms:
-- ✅ `.env` file exists
-- ✅ `GEMINI_API_KEY` is present and the user believes it is valid
-
-If the user is unsure whether the key works, instruct them to run the validation script first:
-```bash
-python scripts/validate_env.py
-```
-This script (included in the skill) does a lightweight API call to confirm the key is active before spending credits on image generation.
+**Non-negotiable outcome:** by the end of the build, every `<img src>` and CSS `background-image` that points at `images/…` MUST resolve to a real file that exists on disk. If any image could not be generated after retries, generate a relevant photographic substitute with `generate_image` — NEVER leave a broken image, an empty box, or a logo standing in for a missing photo. Verify this before finishing (see the final pass).
 
 ---
 
@@ -2649,17 +2634,26 @@ Service image filenames are derived from the service name slug (e.g. `service-dr
 
 Write prompts that are specific to the `BUSINESS_NAME`, `INDUSTRY`, and `CITY`. Generic prompts produce generic images — every detail matters.
 
+**⚠️ CRITICAL — photos are PHOTOS, never logos:** Every generated site image (hero, about-us, service cards, banner, steps, OG/social share) is a **clean photograph**. It must contain **NO text, letters, words, logos, brand names, company names, signage, or watermarks anywhere in the frame** — not on walls, trucks, uniforms, screens, or overlaid on the image. The company logo and business name are added afterward **only via HTML/CSS** (an `<img>` logo in the header, CSS text overlays on the hero). NEVER bake the brand into a photo. A logo floating in the middle of a hero photo is a defect — this is the #1 image mistake, do not make it.
+
+**⚠️ CRITICAL — never use the logo as a photo placeholder:** The logo image (`images/LOGO`) belongs ONLY in the site header and footer, at its normal small size. It must NEVER be used as the `src` / `background-image` of a hero, about-us, service card, banner, steps, or OG slot. Every one of those slots needs its **own distinct real photograph**. If an image fails to generate (API error, refusal, missing key), **retry the photo or use a relevant royalty-free photographic placeholder — do NOT drop the logo (or any brand mark) into a photo slot as a fallback.** Two service cards showing the same company logo instead of service photos is the exact defect to avoid. Before finishing, verify no `<img>`/`background-image` outside the header/footer points at the logo file, and that every image slot has a unique photographic image.
+
+**⚠️ CRITICAL — no giant faded logo watermark behind the hero (or anywhere):** Do NOT place a large, faded, low-opacity, or oversized copy of the logo (or the business name as a graphic) as a decorative background/watermark behind the hero text, behind sections, or anywhere on the page. The hero background is a **photograph** (or a solid/gradient color if the brief says none) — never the logo tinted, blurred, watermarked, or scaled up. The brand appears exactly twice: the small header logo and the footer logo. A washed-out "FENIX WEB DESIGN" phoenix ghosted behind the hero copy is the exact defect to avoid — do not add it.
+
+**If you generate images with a tool/MCP instead of the Python script:** use the **`generate_image`** tool for ALL photographs (hero, about, service, banner, steps, OG). Use **`generate_logo`** ONLY for the actual logo/favicon mark. Never call `generate_logo` for a hero or section photo — that is precisely what produces a logo baked into the picture.
+
 **Prompt structure:** Subject → Setting → Style → Lighting → Mood → Restrictions
 
 **MANDATORY restrictions on every prompt:**
-- End every prompt with: `"Photorealistic. No text, logos, or watermarks in the image."`
+- End every prompt with: `"Photorealistic. No text, letters, logos, brand names, or watermarks anywhere in the image."`
+- Never include the company name or ask for a logo/sign/label to appear in the image
 - Never include real brand names, recognizable logos, or identifiable real people
-- For images with people: specify professional attire, friendly expression, and that they match the business type (e.g. "uniformed technician", "smiling homeowner couple")
+- For images with people: describe **plain, unbranded** attire (no printed logos or lettering on clothing), a friendly expression, and a role that matches the business type (e.g. "technician in a plain uniform", "smiling homeowner couple")
 
 **Prompt examples by section:**
 
 *Hero (plumbing):*
-> "Professional male plumber in a clean branded uniform crouching confidently beside a modern kitchen sink in a bright Phoenix home. Natural daylight, warm inviting atmosphere. Photorealistic. No text, logos, or watermarks in the image."
+> "Professional male plumber in a clean plain unbranded uniform crouching confidently beside a modern kitchen sink in a bright Phoenix home. Natural daylight, warm inviting atmosphere. Photorealistic. No text, letters, logos, brand names, or watermarks anywhere in the image."
 
 *Hero (flower delivery):*
 > "Elegant hand-tied bouquet of fresh white roses and eucalyptus on a marble countertop in a luxury Phoenix home. Soft natural light, shallow depth of field, editorial flower photography style. Photorealistic. No text, logos, or watermarks in the image."
@@ -2668,7 +2662,7 @@ Write prompts that are specific to the `BUSINESS_NAME`, `INDUSTRY`, and `CITY`. 
 > "Wide cinematic shot of a comfortable modern living room with a ceiling vent and perfect temperature on the thermostat display. Cool blue-tinted ambient light, affluent home interior. Photorealistic. No text, logos, or watermarks in the image."
 
 *About Us (general contractor):*
-> "Confident male contractor in his 40s wearing a hard hat and branded polo, standing in front of a newly completed custom home exterior in a sunny Phoenix suburb. Arms crossed, warm smile. Photorealistic. No text, logos, or watermarks in the image."
+> "Confident male contractor in his 40s wearing a hard hat and a plain unbranded polo, standing in front of a newly completed custom home exterior in a sunny Phoenix suburb. Arms crossed, warm smile. Photorealistic. No text, letters, logos, brand names, or watermarks anywhere in the image."
 
 ### See Also
 - `scripts/generate_images.py` — image generation script (model name populated at build time)
