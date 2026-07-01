@@ -487,6 +487,15 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       render a styled TEXT logo (not a generated one). Enforced in `webcreator.md` logo-handling
       rules, `logoTool.ts` generate_logo description ("only when client provided NO logo"), and
       `prompts.ts` step-1 image-assets note.
+      Follow-up 3 (user: header/footer logo is correct, but the agent GENERATES extra logos and
+      inserts them all over — e.g. a giant faded "FENIX WEB DESIGN" phoenix watermark ghosted
+      behind the hero text). Data flow is fine (logo reaches the agent); the defect is the agent
+      inventing logos and using them as decoration. Added a CRITICAL rule forbidding any large/
+      faded/oversized logo or business-name graphic as a background/watermark behind the hero or
+      any section — brand appears exactly twice (small header logo + footer logo); hero bg is a
+      photo or solid/gradient, never the logo. In `webcreator.md` image rules + `prompts.ts`
+      final-pass step. Net: PR #52 stops the agent generating logos at all (logo provided) and
+      stops it placing any logo into hero/section/card/OG/watermark slots.
 
 ## Verification commands
 
