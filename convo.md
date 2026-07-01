@@ -405,6 +405,13 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       a logo is uploaded or generated, plus a "🎨 Match colors to logo" button. Route
       `POST /web-creator/suggest-colors`, `api.suggestColors`.
 
+- [x] "Wipe repo" (start from scratch). Header button 🧹 Wipe repo → `WipeRepoDialog`
+      (type-the-repo-name to confirm + red warning). `RepoManager.wipeContents()` clones/pulls
+      the default branch, `git rm -rf .` + `git clean -fd` (keeps only `.git`), commits "Wipe
+      repository contents to start from scratch" and pushes to the default branch; returns
+      false if already empty. Route `POST /api/projects/:id/wipe-repo` (409 if a session is
+      running). `api.wipeRepo`. Old files remain in git history; the branch becomes empty.
+
 ## Verification commands
 
 ```bash

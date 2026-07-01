@@ -104,6 +104,8 @@ export const api = {
   ) => req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/railway`, input),
   deleteProject: (id: string) =>
     req<{ ok: boolean }>("DELETE", `/api/projects/${id}`),
+  wipeRepo: (id: string) =>
+    req<{ ok: boolean; wiped: boolean }>("POST", `/api/projects/${id}/wipe-repo`),
 
   // goal & instructions
   updateGoal: (
