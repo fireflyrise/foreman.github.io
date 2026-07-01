@@ -73,6 +73,26 @@ export class RepoManager {
   }
 
   /**
+   * Delete ALL repository contents on the default branch (keeping only the
+   * .git history) and push — a hard "start from scratch". Returns false if the
+   * repo was already empty (nothing to do).
+   */
+  async wipeContents(): Promise<boolean> {
+    await this.prepare(); // clone + checkout default branch + pull
+    const git = this.git();
+    // Remove every tracked file (this never touches .git), then any leftover
+    // untracked files/dirs.
+    await git.raw(["rm", "-rf", "."]).catch(() => undefined);
+    await git.raw(["clean", "-fd"]).catch(() => undefined);
+    await git.add(["-A"]).catch(() => undefined);
+    const status = await git.status();
+    if (status.isClean()) return false;
+    await git.commit("Wipe repository contents to start from scratch");
+    await git.push("origin", this.defaultBranch);
+    return true;
+  }
+
+  /**
    * After a per-instruction squash-merge, re-base the session branch onto the
    * updated default branch so the NEXT instruction starts from a clean copy of
    * `main`. Without this the branch keeps its old (now squashed-away) commits

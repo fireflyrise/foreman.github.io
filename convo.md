@@ -405,6 +405,24 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       a logo is uploaded or generated, plus a "🎨 Match colors to logo" button. Route
       `POST /web-creator/suggest-colors`, `api.suggestColors`.
 
+- [x] "Wipe repo" (start from scratch). Header button 🧹 Wipe repo → `WipeRepoDialog`
+      (type-the-repo-name to confirm + red warning). `RepoManager.wipeContents()` clones/pulls
+      the default branch, `git rm -rf .` + `git clean -fd` (keeps only `.git`), commits "Wipe
+      repository contents to start from scratch" and pushes to the default branch; returns
+      false if already empty. Route `POST /api/projects/:id/wipe-repo` (409 if a session is
+      running). `api.wipeRepo`. Old files remain in git history; the branch becomes empty.
+
+- [x] Add Project quiz + billing-at-create + Integrations copy. `AddProjectDialog` is now a
+      3-step quiz: (1) project type (Software/Web), (2) **Personal (Max subscription) vs Client
+      (API key)** with clear descriptions of each, (3) repo picker (back buttons throughout).
+      `CreateProjectInput.billing` maps the answer onto the module the project uses: web →
+      `webAuthMode`, else `authMode`. The in-project **billing** dropdown still exists and still
+      controls the credential. WIRING CONFIRMED: `/session/start` reads `project.authMode` fresh
+      and the web run route reads `project.webAuthMode`; `AgentSession.buildAuthEnv` picks
+      ANTHROPIC_API_KEY vs CLAUDE_CODE_OAUTH_TOKEN — so changing the dropdown takes effect on the
+      NEXT run. Integrations popup: dropped "Module 1" from the Max-subscription label/help and
+      the Anthropic chip tooltip.
+
 ## Verification commands
 
 ```bash

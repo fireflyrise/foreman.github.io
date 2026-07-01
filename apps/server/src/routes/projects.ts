@@ -19,6 +19,7 @@ import { prisma } from "../db.js";
 import { serializeProject } from "../serialize.js";
 import { saveWebSpec } from "../webspec.js";
 import { deleteBranch } from "../integrations/github.js";
+import { RepoManager } from "../git/RepoManager.js";
 import { SessionRegistry } from "../agent/SessionRegistry.js";
 
 const projectInclude = {
@@ -55,7 +56,15 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
   app.post("/api/projects", async (req, reply) => {
     const parsed = CreateProjectInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
-    const { repoOwner, repoName, defaultBranch, name, projectType } = parsed.data;
+    const { repoOwner, repoName, defaultBranch, name, projectType, billing } = parsed.data;
+    // Map the chosen billing (personal→subscription / client→api) onto the
+    // module this project actually uses; leave the other at its default.
+    const billingField =
+      billing === undefined
+        ? {}
+        : projectType === "web"
+          ? { webAuthMode: billing }
+          : { authMode: billing };
     const project = await prisma.project.create({
       data: {
         userId: getUserId(req),
@@ -65,6 +74,7 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
         repoFullName: `${repoOwner}/${repoName}`,
         defaultBranch,
         projectType,
+        ...billingField,
         goal: { create: {} },
       },
       include: projectInclude,
@@ -161,6 +171,29 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
     }
     await prisma.project.delete({ where: { id } });
     return { ok: true };
+  });
+
+  // Wipe the repo's default-branch contents (keep only .git) to start fresh.
+  app.post("/api/projects/:id/wipe-repo", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const existing = await loadProject(getUserId(req), id);
+    if (!existing) return reply.code(404).send({ error: "Not found" });
+    if (SessionRegistry.isRunning(id)) {
+      return reply.code(409).send({ error: "Stop the running session before wiping the repo." });
+    }
+    const repo = new RepoManager(
+      getUserId(req),
+      id,
+      existing.repoOwner,
+      existing.repoName,
+      existing.defaultBranch,
+    );
+    try {
+      const wiped = await repo.wipeContents();
+      return { ok: true, wiped };
+    } catch (e) {
+      return reply.code(400).send({ error: (e as Error).message });
+    }
   });
 
   // ─── Goal ──────────────────────────────────────────────────────────────────

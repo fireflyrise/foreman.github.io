@@ -85,6 +85,7 @@ export const api = {
     defaultBranch: string;
     name?: string;
     projectType?: "software" | "web";
+    billing?: "subscription" | "api";
   }) => req<{ project: ProjectDTO }>("POST", "/api/projects", input),
   renameProject: (id: string, name: string) =>
     req<{ project: ProjectDTO }>("PATCH", `/api/projects/${id}`, { name }),
@@ -104,6 +105,8 @@ export const api = {
   ) => req<{ project: ProjectDTO }>("PUT", `/api/projects/${id}/railway`, input),
   deleteProject: (id: string) =>
     req<{ ok: boolean }>("DELETE", `/api/projects/${id}`),
+  wipeRepo: (id: string) =>
+    req<{ ok: boolean; wiped: boolean }>("POST", `/api/projects/${id}/wipe-repo`),
 
   // goal & instructions
   updateGoal: (

@@ -7,6 +7,7 @@ import { InstructionList } from "./InstructionList.js";
 import { AgentConsole } from "./AgentConsole.js";
 import { WebCreatorForm } from "./WebCreatorForm.js";
 import { RailwayTargetDialog } from "./RailwayTargetDialog.js";
+import { WipeRepoDialog } from "./WipeRepoDialog.js";
 import { Button } from "./ui.js";
 
 type Module = "software" | "web";
@@ -16,6 +17,7 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
   // The project's type fixes which module it uses — no in-project switching.
   const module: Module = project.projectType === "web" ? "web" : "software";
   const [showRailway, setShowRailway] = useState(false);
+  const [showWipe, setShowWipe] = useState(false);
   const railwaySet = Boolean(project.railwayProjectId);
 
   async function changeAuthMode(authMode: "subscription" | "api") {
@@ -90,6 +92,13 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
           >
             🚆 Railway{railwaySet ? " ✓" : ""}
           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setShowWipe(true)}
+            title="Delete all files on the default branch to start from scratch (keeps .git history)"
+          >
+            🧹 Wipe repo
+          </Button>
           <span className="rounded-md border border-edge px-3 py-1 text-xs text-gray-300">
             {module === "web" ? "Web project" : "Software project"}
           </span>
@@ -120,6 +129,7 @@ export function ProjectView({ project }: { project: ProjectDTO }) {
       {showRailway && (
         <RailwayTargetDialog project={project} onClose={() => setShowRailway(false)} />
       )}
+      {showWipe && <WipeRepoDialog project={project} onClose={() => setShowWipe(false)} />}
     </div>
   );
 }
