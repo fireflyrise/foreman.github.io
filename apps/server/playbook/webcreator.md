@@ -1053,7 +1053,7 @@ All pages use the fixed layout defined above. Build sections in this exact order
 
    **Example prompts:**
    - Plumbing: *"A friendly male plumber in a clean uniform kneeling beside a kitchen sink in a bright modern home, smiling confidently at the camera. Warm natural light. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
-   - HVAC: *"A professional HVAC technician in branded workwear inspecting an air conditioning unit on the side of a suburban home, bright sunny day. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
+   - HVAC: *"A professional HVAC technician in a plain unbranded work uniform inspecting an air conditioning unit on the side of a suburban home, bright sunny day. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
    - Flower delivery: *"An elegantly dressed female florist arranging a large bouquet of fresh roses and greenery on a marble countertop in a bright studio. Photorealistic, warm and professional atmosphere. No text, logos, or watermarks in the image."*
 
 5. **Reviews Section**
@@ -2649,17 +2649,22 @@ Service image filenames are derived from the service name slug (e.g. `service-dr
 
 Write prompts that are specific to the `BUSINESS_NAME`, `INDUSTRY`, and `CITY`. Generic prompts produce generic images — every detail matters.
 
+**⚠️ CRITICAL — photos are PHOTOS, never logos:** Every generated site image (hero, about-us, service cards, banner, steps, OG/social share) is a **clean photograph**. It must contain **NO text, letters, words, logos, brand names, company names, signage, or watermarks anywhere in the frame** — not on walls, trucks, uniforms, screens, or overlaid on the image. The company logo and business name are added afterward **only via HTML/CSS** (an `<img>` logo in the header, CSS text overlays on the hero). NEVER bake the brand into a photo. A logo floating in the middle of a hero photo is a defect — this is the #1 image mistake, do not make it.
+
+**If you generate images with a tool/MCP instead of the Python script:** use the **`generate_image`** tool for ALL photographs (hero, about, service, banner, steps, OG). Use **`generate_logo`** ONLY for the actual logo/favicon mark. Never call `generate_logo` for a hero or section photo — that is precisely what produces a logo baked into the picture.
+
 **Prompt structure:** Subject → Setting → Style → Lighting → Mood → Restrictions
 
 **MANDATORY restrictions on every prompt:**
-- End every prompt with: `"Photorealistic. No text, logos, or watermarks in the image."`
+- End every prompt with: `"Photorealistic. No text, letters, logos, brand names, or watermarks anywhere in the image."`
+- Never include the company name or ask for a logo/sign/label to appear in the image
 - Never include real brand names, recognizable logos, or identifiable real people
-- For images with people: specify professional attire, friendly expression, and that they match the business type (e.g. "uniformed technician", "smiling homeowner couple")
+- For images with people: describe **plain, unbranded** attire (no printed logos or lettering on clothing), a friendly expression, and a role that matches the business type (e.g. "technician in a plain uniform", "smiling homeowner couple")
 
 **Prompt examples by section:**
 
 *Hero (plumbing):*
-> "Professional male plumber in a clean branded uniform crouching confidently beside a modern kitchen sink in a bright Phoenix home. Natural daylight, warm inviting atmosphere. Photorealistic. No text, logos, or watermarks in the image."
+> "Professional male plumber in a clean plain unbranded uniform crouching confidently beside a modern kitchen sink in a bright Phoenix home. Natural daylight, warm inviting atmosphere. Photorealistic. No text, letters, logos, brand names, or watermarks anywhere in the image."
 
 *Hero (flower delivery):*
 > "Elegant hand-tied bouquet of fresh white roses and eucalyptus on a marble countertop in a luxury Phoenix home. Soft natural light, shallow depth of field, editorial flower photography style. Photorealistic. No text, logos, or watermarks in the image."
@@ -2668,7 +2673,7 @@ Write prompts that are specific to the `BUSINESS_NAME`, `INDUSTRY`, and `CITY`. 
 > "Wide cinematic shot of a comfortable modern living room with a ceiling vent and perfect temperature on the thermostat display. Cool blue-tinted ambient light, affluent home interior. Photorealistic. No text, logos, or watermarks in the image."
 
 *About Us (general contractor):*
-> "Confident male contractor in his 40s wearing a hard hat and branded polo, standing in front of a newly completed custom home exterior in a sunny Phoenix suburb. Arms crossed, warm smile. Photorealistic. No text, logos, or watermarks in the image."
+> "Confident male contractor in his 40s wearing a hard hat and a plain unbranded polo, standing in front of a newly completed custom home exterior in a sunny Phoenix suburb. Arms crossed, warm smile. Photorealistic. No text, letters, logos, brand names, or watermarks anywhere in the image."
 
 ### See Also
 - `scripts/generate_images.py` — image generation script (model name populated at build time)

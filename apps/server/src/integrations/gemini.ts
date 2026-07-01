@@ -53,6 +53,42 @@ export async function generateLogo(
     .filter(Boolean)
     .join(" ");
 
+  return callGeminiImage(apiKey, fullPrompt);
+}
+
+/**
+ * Generate a PHOTOGRAPHIC image (hero, about, service card, banner, OG social
+ * share, etc.) with Gemini and return it as a data URL. This is deliberately
+ * SEPARATE from `generateLogo`: it never injects "logo" / company-name /
+ * brand language, and it hard-appends a restriction forbidding any text,
+ * letters, logos, brand names, or watermarks in the frame. Branding is applied
+ * later via HTML/CSS overlay — never baked into the pixels. The caller is
+ * responsible for persisting the result.
+ */
+export async function generateImage(
+  userId: string,
+  prompt: string,
+): Promise<GeneratedLogo> {
+  const apiKey = await getGeminiKey(userId);
+  if (!apiKey) throw new Error("Gemini is not connected (no API key).");
+
+  const fullPrompt = [
+    prompt.trim(),
+    // Belt-and-suspenders guardrail, appended regardless of what the agent
+    // passed, so a photo never comes back with baked-in branding.
+    "This is a clean, realistic PHOTOGRAPH — not a logo, poster, or graphic.",
+    "Absolutely NO text, letters, words, numbers, captions, logos, brand names,",
+    "company names, signage, labels, or watermarks anywhere in the image.",
+    "Any clothing or uniforms must be plain with no printed logos or lettering.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return callGeminiImage(apiKey, fullPrompt);
+}
+
+/** Shared Gemini image-generation HTTP call. */
+async function callGeminiImage(apiKey: string, fullPrompt: string): Promise<GeneratedLogo> {
   const model = env.geminiImageModel;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 

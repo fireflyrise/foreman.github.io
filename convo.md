@@ -456,6 +456,23 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       covers BOTH languages. To get it on an existing site: re-run — a fully-completed build
       reseeds with the new steps (a partial build resumes the old ones).
 
+- [x] Fix weird generated images (logo/brand text baked into hero & section photos, e.g.
+      fenixwebdesign.com had the phoenix logo + "Fenix WEB DESIGN" text in the middle of the
+      hero). Root cause: the only image tool the agent had was `generate_logo`, and
+      `generateLogo()` in `gemini.ts` HARD-prepends "Design a clean, modern, professional
+      vector-style logo. Company name: …" — so when the agent used it for a hero/section photo
+      it got a logo with the brand name baked in. Fixes:
+      (1) `gemini.ts` — new `generateImage()` for photographs: never injects logo/company-name
+          language, hard-appends "clean PHOTOGRAPH … absolutely NO text/letters/logos/brand
+          names/watermarks; clothing plain with no printed logos".
+      (2) `logoTool.ts` MCP — added a `generate_image` tool (photos) alongside `generate_logo`
+          (logo/favicon ONLY); descriptions now steer the agent to the right one.
+      (3) `playbook/webcreator.md` — CRITICAL rule that every site photo is text/logo-free
+          (branding via HTML/CSS only), tool-usage note (generate_image for photos, generate_logo
+          for the mark only), strengthened MANDATORY restriction wording, and removed "branded
+          uniform/workwear/polo" from example prompts (→ "plain unbranded …", which invited logos).
+      (4) `prompts.ts` — final-pass step now spells out the clean-photo rule + which tool to use.
+
 ## Verification commands
 
 ```bash
