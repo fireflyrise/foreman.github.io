@@ -56,7 +56,15 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
   app.post("/api/projects", async (req, reply) => {
     const parsed = CreateProjectInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "Invalid input" });
-    const { repoOwner, repoName, defaultBranch, name, projectType } = parsed.data;
+    const { repoOwner, repoName, defaultBranch, name, projectType, billing } = parsed.data;
+    // Map the chosen billing (personal→subscription / client→api) onto the
+    // module this project actually uses; leave the other at its default.
+    const billingField =
+      billing === undefined
+        ? {}
+        : projectType === "web"
+          ? { webAuthMode: billing }
+          : { authMode: billing };
     const project = await prisma.project.create({
       data: {
         userId: getUserId(req),
@@ -66,6 +74,7 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
         repoFullName: `${repoOwner}/${repoName}`,
         defaultBranch,
         projectType,
+        ...billingField,
         goal: { create: {} },
       },
       include: projectInclude,

@@ -5,6 +5,7 @@ import { api, ApiError } from "../api/client.js";
 import { Button, Panel, TextInput } from "./ui.js";
 
 type ProjectType = "software" | "web";
+type Billing = "subscription" | "api";
 
 const TYPES: { type: ProjectType; title: string; description: string; emoji: string }[] = [
   {
@@ -21,6 +22,31 @@ const TYPES: { type: ProjectType; title: string; description: string; emoji: str
   },
 ];
 
+const OWNERSHIP: {
+  billing: Billing;
+  title: string;
+  badge: string;
+  description: string;
+  emoji: string;
+}[] = [
+  {
+    billing: "subscription",
+    title: "Personal",
+    badge: "Max subscription",
+    description:
+      "Your own project. Runs on your Claude Max subscription — included in your plan, no per-use API charges.",
+    emoji: "👤",
+  },
+  {
+    billing: "api",
+    title: "For a client",
+    badge: "API key",
+    description:
+      "Work you're doing for a client. Runs on your Anthropic API key — pay-as-you-go and metered, so you can bill the cost through.",
+    emoji: "🤝",
+  },
+];
+
 export function AddProjectDialog({
   onClose,
   onCreated,
@@ -30,6 +56,7 @@ export function AddProjectDialog({
 }) {
   const qc = useQueryClient();
   const [projectType, setProjectType] = useState<ProjectType | null>(null);
+  const [billing, setBilling] = useState<Billing | null>(null);
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -59,6 +86,7 @@ export function AddProjectDialog({
         repoName: repo.name,
         defaultBranch: repo.defaultBranch,
         projectType: projectType ?? "software",
+        billing: billing ?? undefined,
       });
       await qc.invalidateQueries({ queryKey: ["projects"] });
       onCreated(project);
@@ -96,19 +124,65 @@ export function AddProjectDialog({
     );
   }
 
+  // Step 2: personal (Max subscription) or client (API key)?
+  if (!billing) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <Panel className="w-[34rem] max-w-full">
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <button
+                onClick={() => setProjectType(null)}
+                className="text-gray-400 hover:text-white"
+                title="Back to project type"
+              >
+                ‹
+              </button>
+              Is this personal or for a client?
+            </h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-white">
+              ✕
+            </button>
+          </div>
+          <p className="mb-3 text-xs text-gray-400">
+            This sets how the project's AI usage is billed. You can change it later from the
+            project's <span className="text-gray-200">billing</span> dropdown.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {OWNERSHIP.map((o) => (
+              <button
+                key={o.billing}
+                onClick={() => setBilling(o.billing)}
+                className="flex flex-col gap-1 rounded-lg border border-edge bg-ink p-4 text-left transition hover:border-blue-500 hover:bg-edge"
+              >
+                <span className="text-2xl">{o.emoji}</span>
+                <span className="text-sm font-semibold text-white">{o.title}</span>
+                <span className="w-fit rounded bg-edge px-1.5 py-0.5 text-[10px] text-blue-300">
+                  {o.badge}
+                </span>
+                <span className="text-xs text-gray-400">{o.description}</span>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <Panel className="flex h-[32rem] w-[34rem] max-w-full flex-col">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <button
-              onClick={() => setProjectType(null)}
+              onClick={() => setBilling(null)}
               className="text-gray-400 hover:text-white"
-              title="Back to project type"
+              title="Back"
             >
               ‹
             </button>
-            {projectType === "web" ? "Web project" : "Software project"} — choose a repo
+            {projectType === "web" ? "Web" : "Software"} ·{" "}
+            {billing === "subscription" ? "Personal" : "Client"} — choose a repo
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             ✕

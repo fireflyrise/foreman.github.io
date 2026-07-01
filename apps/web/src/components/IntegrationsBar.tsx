@@ -29,7 +29,7 @@ function Chip({ s }: { s: IntegrationStatusDTO }) {
   }
   const title =
     s.provider === "ANTHROPIC"
-      ? "Max = Software Creator (subscription); API = Web Creator (API key)"
+      ? "Max = Claude subscription (personal projects); API = pay-as-you-go key (client projects)"
       : s.connected
         ? "Connected"
         : "Not connected";
@@ -191,7 +191,7 @@ function Dialog({ onClose }: { onClose: () => void }) {
 
         <section className="mb-4 rounded-md border border-edge p-3">
           <div className="mb-2 flex items-center justify-between">
-            <Label>Max subscription (Module 1 / CLAUDE_CODE_OAUTH_TOKEN)</Label>
+            <Label>Max subscription (CLAUDE_CODE_OAUTH_TOKEN)</Label>
             <Button variant="subtle" onClick={testSubscription} disabled={subTesting}>
               {subTesting ? "Testing…" : "Test Max subscription"}
             </Button>
@@ -204,8 +204,8 @@ function Dialog({ onClose }: { onClose: () => void }) {
           ) : (
             <p className="text-xs text-gray-500">
               Runs a tiny real Claude Code call using only your subscription token (no API-key
-              fallback) — a green ✅ confirms Module 1 will bill against your Max plan. Uses a
-              small amount of plan usage.
+              fallback) — a green ✅ confirms your Max plan works. Uses a small amount of plan
+              usage.
             </p>
           )}
         </section>

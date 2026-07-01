@@ -136,6 +136,9 @@ export const CreateProjectInput = z.object({
   defaultBranch: z.string().min(1).default("main"),
   name: z.string().min(1).optional(),
   projectType: ProjectType.default("software"),
+  // Billing for this project's module: "subscription" (personal/Max) or "api"
+  // (client/pay-as-you-go). Sets the relevant module's auth mode at creation.
+  billing: AuthMode.optional(),
 });
 export type CreateProjectInput = z.infer<typeof CreateProjectInput>;
 
