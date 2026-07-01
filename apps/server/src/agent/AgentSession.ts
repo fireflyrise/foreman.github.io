@@ -42,6 +42,8 @@ interface StartArgs {
   instructions: Array<{ id: string; text: string }>;
   /** "subscription" → Max plan (CLAUDE_CODE_OAUTH_TOKEN); "api" → ANTHROPIC_API_KEY. */
   authMode: AuthMode;
+  /** Continue a partially-run project on this existing branch instead of a fresh one. */
+  resumeBranch?: string;
 }
 
 type Subscriber = (e: AgentEvent) => void;
@@ -66,6 +68,8 @@ export class AgentSession {
   private readonly mergePolicy: string;
   private readonly goal: GoalContext;
   private readonly authMode: AuthMode;
+  /** Existing branch to continue on (resume), if any. */
+  private readonly resumeBranch?: string;
   /** Set when a subscription session has been told to fall back to the API key. */
   private apiKeyOverride = false;
   /** Holds the instruction that hit the limit, so we can retry it on resume. */
@@ -114,6 +118,7 @@ export class AgentSession {
     this.mergePolicy = args.mergePolicy;
     this.goal = args.goal;
     this.authMode = args.authMode;
+    this.resumeBranch = args.resumeBranch;
     this.queue = args.instructions.map((i) => ({ id: i.id, text: i.text }));
     this.total = this.queue.length;
     this.repo = new RepoManager(
@@ -169,9 +174,16 @@ export class AgentSession {
   async start(): Promise<void> {
     this.emit({ type: "log", level: "info", text: "Preparing repository…" });
     await this.repo.prepare();
-    const slug = `${this.projectId}`.slice(0, 8);
-    this.branchName = await this.repo.createSessionBranch(slug);
-    this.emit({ type: "git", action: "branch", detail: `Created branch ${this.branchName}` });
+    // Resume on the prior branch (keeping partial work) if one was passed and
+    // it still exists; otherwise cut a fresh session branch.
+    if (this.resumeBranch && (await this.repo.checkoutExisting(this.resumeBranch))) {
+      this.branchName = this.resumeBranch;
+      this.emit({ type: "git", action: "branch", detail: `Resuming on branch ${this.branchName}` });
+    } else {
+      const slug = `${this.projectId}`.slice(0, 8);
+      this.branchName = await this.repo.createSessionBranch(slug);
+      this.emit({ type: "git", action: "branch", detail: `Created branch ${this.branchName}` });
+    }
 
     const session = await prisma.session.create({
       data: { projectId: this.projectId, branchName: this.branchName, status: "running" },
@@ -463,7 +475,7 @@ export class AgentSession {
       this.emit({
         type: "log",
         level: "warn",
-        text: `Foreman's per-session cost cap reached ($${this.totalCostUsd.toFixed(2)} ≥ $${env.sessionCostLimitUsd}). Stopping. Raise or disable it with the SESSION_COST_LIMIT_USD env var (0 = no cap).`,
+        text: `Foreman's per-session cost cap reached ($${this.totalCostUsd.toFixed(2)} ≥ $${env.sessionCostLimitUsd}). Stopping. Press Run to continue where it left off with a fresh budget, or raise/disable the cap with SESSION_COST_LIMIT_USD (0 = no cap).`,
       });
       await this.stop();
       return;

@@ -83,21 +83,29 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
         spec = fromStore.data;
       }
 
-      // Drop the full playbook where the agent can read it (outside the repo).
+      // Always (re)write the playbook + decode image assets to their stable
+      // paths so the instructions' file references resolve — even on resume
+      // after a container restart wiped the ephemeral workspace.
       const playbookPath = writePlaybookForProject(id);
-
-      // Decode any uploaded base64 images (logo/favicon/hero/OG) to files and
-      // reference them by path — keeps the brief small (a multi-MB data URL in
-      // the prompt is what made the build hang on base64 decoding).
       const briefSpec = materializeWebAssets(id, spec);
 
-      // (Re)seed the instruction list — replace any prior generated steps so
-      // re-running never appends duplicates.
-      const steps = buildWebCreatorInstructions(briefSpec, playbookPath);
-      await prisma.instruction.deleteMany({ where: { projectId: id } });
-      let order = 0;
-      for (const text of steps) {
-        await prisma.instruction.create({ data: { projectId: id, order: order++, text } });
+      // If a prior build partially completed (some done + some pending, e.g. a
+      // cost-cap/manual stop), RESUME the remaining steps instead of wiping and
+      // regenerating from scratch. Only reseed for a genuinely fresh build.
+      const existing = await prisma.instruction.findMany({
+        where: { projectId: id },
+        select: { status: true },
+      });
+      const resuming =
+        existing.some((i) => i.status !== "done") && existing.some((i) => i.status === "done");
+
+      if (!resuming) {
+        const steps = buildWebCreatorInstructions(briefSpec, playbookPath);
+        await prisma.instruction.deleteMany({ where: { projectId: id } });
+        let order = 0;
+        for (const text of steps) {
+          await prisma.instruction.create({ data: { projectId: id, order: order++, text } });
+        }
       }
 
       try {
