@@ -496,6 +496,18 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       photo or solid/gradient, never the logo. In `webcreator.md` image rules + `prompts.ts`
       final-pass step. Net: PR #52 stops the agent generating logos at all (logo provided) and
       stops it placing any logo into hero/section/card/OG/watermark slots.
+      Follow-up 4 (user: most pages' services sections are missing their images). ROOT CAUSE:
+      playbook Step 6.6 was written for INTERACTIVE use — it told the agent to ASK the user
+      "do you have a .env with GEMINI_API_KEY?" and "wait for confirmation", and to generate
+      images via a Python script needing that .env. But Foreman runs FULLY AUTONOMOUSLY (no user,
+      asking is forbidden), so the gate could never be satisfied → image generation skipped/half
+      done → broken/missing <img> tags. Fix: rewrote Step 6.6 Step A to be autonomous with the
+      already-authenticated `generate_image` MCP tool (server-side Gemini key, no .env/pip/user
+      setup) as the PREFERRED path; Python script only as a fallback if a key is already present
+      non-interactively; NEVER ask, never block. Non-negotiable: every <img>/background-image
+      must resolve to a real file — generate substitutes for any that fail, never ship broken
+      images. Also `prompts.ts`: service-page step now generates each card's image, and the
+      final-pass step walks every page verifying every image file exists (generating any missing).
 
 ## Verification commands
 

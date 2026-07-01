@@ -2536,32 +2536,16 @@ Thumbs.db
 
 ## Step 6.6: Image Generation with Google Gemini
 
-All website images are AI-generated using the **latest Google Gemini image generation model** via a Python script included with the skill. No stock photos, no placeholders — every image is purpose-built for the business, industry, and city.
+All website images are AI-generated using Google Gemini. No stock photos, no broken/missing images, no empty placeholders — every image slot on every page must end up with a real, purpose-built image file that loads.
 
-### Step A — Validate .env Before Anything Else
+### Step A — How to generate images (AUTONOMOUS — do NOT ask the user)
 
-**MANDATORY: Before generating the images manifest, before writing any HTML, Claude must verify the following with the user:**
+**You are running fully autonomously. There is NO user to answer questions and NO interactive `.env` setup step. Never ask about a `GEMINI_API_KEY`, never wait for confirmation, and never block the build on a missing key.** Two paths are available, in priority order:
 
-Ask:
-> *"Before I generate your images, I need to check a couple of things:*
-> 1. *Do you have a `.env` file in your project folder?*
-> 2. *Does it contain a `GEMINI_API_KEY` entry with a valid Google Gemini API key?*
->
-> *The `.env` file should look like this:*
-> ```
-> GEMINI_API_KEY=AIzaSy...your_key_here
-> ```
-> *If you don't have one yet, go to [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey) to generate a free key, then create the `.env` file in your project folder.*"
+1. **PREFERRED — the `generate_image` MCP tool (already authenticated).** The orchestrator exposes a `generate_image` tool backed by a server-side Gemini key — it needs no `.env`, no `pip install`, and no user setup. Call it for EVERY photographic image the site needs (hero, about, each service card, banner, steps, OG). It returns a base64 data URL; decode the part after the comma and write it to the correct `images/FILENAME` file. Use `generate_logo` ONLY if no logo was provided (see logo rules) — never for photos. This is the reliable path; use it by default.
+2. **Fallback — the Python script (`scripts/generate_images.py`).** Only if a working `GEMINI_API_KEY` is already present in the environment/`.env` WITHOUT any user interaction. If the key is absent, do NOT stop and do NOT ask — fall back to path 1 (the MCP tool).
 
-**Wait for confirmation before proceeding.** Do not generate the manifest or any images until the user confirms:
-- ✅ `.env` file exists
-- ✅ `GEMINI_API_KEY` is present and the user believes it is valid
-
-If the user is unsure whether the key works, instruct them to run the validation script first:
-```bash
-python scripts/validate_env.py
-```
-This script (included in the skill) does a lightweight API call to confirm the key is active before spending credits on image generation.
+**Non-negotiable outcome:** by the end of the build, every `<img src>` and CSS `background-image` that points at `images/…` MUST resolve to a real file that exists on disk. If any image could not be generated after retries, generate a relevant photographic substitute with `generate_image` — NEVER leave a broken image, an empty box, or a logo standing in for a missing photo. Verify this before finishing (see the final pass).
 
 ---
 
