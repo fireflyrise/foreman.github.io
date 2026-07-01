@@ -472,6 +472,13 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
           for the mark only), strengthened MANDATORY restriction wording, and removed "branded
           uniform/workwear/polo" from example prompts (→ "plain unbranded …", which invited logos).
       (4) `prompts.ts` — final-pass step now spells out the clean-photo rule + which tool to use.
+      Follow-up (screenshot showed 2 service cards using the Fenix LOGO as the card image
+      instead of a photo — i.e. the logo dropped into photo slots as a fallback): added a
+      CRITICAL rule that the logo lives ONLY in header/footer, is NEVER a hero/about/service/
+      banner/OG image, and must NOT be used as a placeholder when a photo fails (retry or use a
+      photographic placeholder instead); every image slot needs its own distinct photo; final
+      pass verifies no non-header/footer image references the logo file. In `webcreator.md`
+      image rules + `prompts.ts` final step.
 
 ## Verification commands
 
