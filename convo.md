@@ -479,6 +479,14 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       photographic placeholder instead); every image slot needs its own distinct photo; final
       pass verifies no non-header/footer image references the logo file. In `webcreator.md`
       image rules + `prompts.ts` final step.
+      Follow-up 2 (user clarified: those phoenix marks were AGENT-GENERATED logos — the client
+      had UPLOADED their own logo, which the agent ignored, then invented a new logo and used it
+      as service-card images): root cause was the agent calling `generate_logo` off-playbook.
+      Added hard rules: if the brief provides a logo, use THAT EXACT file unchanged in
+      header/footer, NEVER generate/redraw/recreate it or call `generate_logo`; if no logo,
+      render a styled TEXT logo (not a generated one). Enforced in `webcreator.md` logo-handling
+      rules, `logoTool.ts` generate_logo description ("only when client provided NO logo"), and
+      `prompts.ts` step-1 image-assets note.
 
 ## Verification commands
 

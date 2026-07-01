@@ -237,10 +237,11 @@ Notes on these inputs:
 - Default fonts are `FONT_HEADING` = **Montserrat** (headings, weight 800, capitalized) and `FONT_BODY` = **Open Sans** (body). Use whatever the brief specifies; load both from Google Fonts.
 
 **Logo handling rules:**
+- **⚠️ If the brief provides a logo (URL, filename, or uploaded file): use THAT EXACT file, unchanged, as the logo everywhere it appears (header + footer). NEVER generate, redraw, recreate, re-imagine, "clean up", or "improve" the client's logo, and NEVER call `generate_logo` — the client already gave you their brand mark and it is the only correct one. Inventing a different logo is a serious defect.**
 - If a URL is provided: use it directly in `<img src="URL">`
 - If a filename is provided: reference it as `images/FILENAME`
 - If uploaded: treat as `images/FILENAME` using the uploaded file's name
-- If none: render styled text logo using `BUSINESS_NAME` in `FONT_HEADING` and `--color-primary`. Add HTML comment: `<!-- Replace with <img src="images/logo.png"> once logo is ready -->`
+- If none is provided: render a styled TEXT logo using `BUSINESS_NAME` in `FONT_HEADING` and `--color-primary`. Add HTML comment: `<!-- Replace with <img src="images/logo.png"> once logo is ready -->`. Do NOT generate a logo image — a text logo is the correct placeholder. Only ever use `generate_logo` if the brief has no logo AND explicitly asks you to create one.
 
 **Favicon handling rules:**
 

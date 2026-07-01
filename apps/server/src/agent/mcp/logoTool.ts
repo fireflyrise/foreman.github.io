@@ -18,7 +18,7 @@ export function createLogoMcpServer(userId: string) {
     tools: [
       tool(
         "generate_logo",
-        "Generate a LOGO / brand mark ONLY (for the site's logo or favicon). Do NOT use this for hero, about, service, banner, or OG images — those are photographs; use generate_image instead. Returns a base64 data URL you can decode and write to an image file in the project.",
+        "Generate a LOGO / brand mark. Use this ONLY when the client provided NO logo and explicitly needs one created. If the client already provided a logo (URL, file, or upload), DO NOT call this — use their exact logo file unchanged; inventing a new one is a defect. Never use this for hero, about, service, banner, or OG images — those are photographs; use generate_image instead. Returns a base64 data URL you can decode and write to an image file in the project.",
         {
           prompt: z.string().describe("Description of the logo to generate."),
           companyName: z.string().optional(),
