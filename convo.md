@@ -447,6 +447,15 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       now returns `authMode`), falling back to the project's configured billing; branch =
       `project.activeSession.branchName`. Surfaces both without scrolling the log.
 
+- [x] Fix Spanish/bilingual not applied: the Spanish build was tacked onto the FRONT of the
+      giant final catch-all instruction (SEO+schema+sitemap+favicons+OG+404+images+verify), so
+      it got deprioritized/skipped — especially if the run stalled. Now `buildWebCreatorInstructions`
+      gives the Spanish version its OWN dedicated instruction step (when `bilingual`), marked a
+      REQUIRED deliverable (translate/localize every page under /es/…, EN⇄ES nav toggle,
+      hreflang/canonical), step-1 notes the site is bilingual, and the final-pass step explicitly
+      covers BOTH languages. To get it on an existing site: re-run — a fully-completed build
+      reseeds with the new steps (a partial build resumes the old ones).
+
 ## Verification commands
 
 ```bash
