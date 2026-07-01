@@ -423,6 +423,13 @@ Platform stdout (Railway) is ephemeral, so failures are persisted to a queryable
       NEXT run. Integrations popup: dropped "Module 1" from the Max-subscription label/help and
       the Anthropic chip tooltip.
 
+- [x] Fix "$10 limit kills the run": that was Foreman's OWN per-session cost cap
+      (`SESSION_COST_LIMIT_USD`, was default $10), NOT a Claude limit. (1) Raised the default to
+      **$50**; (2) it now only enforces for **API-billed** runs (`effectiveMode() === "api"`) —
+      Max-subscription "cost" is phantom, so it no longer kills subscription runs; (3) `0`
+      disables the cap; (4) clearer log message naming the env var. Set `SESSION_COST_LIMIT_USD`
+      in Railway to tune/disable.
+
 ## Verification commands
 
 ```bash
